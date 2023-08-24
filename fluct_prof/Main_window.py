@@ -4,7 +4,9 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font as tkFont
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+from skimage import filters
 
 import csv
 
@@ -13,7 +15,6 @@ import lmfit
 import time
 
 import tifffile
-
 
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 
@@ -77,7 +78,6 @@ from fluct_prof import Functions_sFCS as func
 
 
 class Left_frame :
-
 
 
 
@@ -615,7 +615,10 @@ class Left_frame :
 
 
 class sFCS_frame:
-
+	
+	def first_degree_bleaching(self, x, a, b):
+		return a*x+b
+	
 	def Transfer_extracted(self):
 		name = self.dataset_names [self.file_number]
 		if name in self.dictionary_of_extracted:
@@ -664,12 +667,13 @@ class sFCS_frame:
 				print("Dataset list length", len(dataset.datasets_list))
 
 				for i in range (0, dataset.datasets_list[rep].channels_number): 
-
+					current_channels_list = dataset.datasets_list[rep].channels_list[i]
 					#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
+					popt, pcov = curve_fit(self.first_degree_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
+					self.traces.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
+					self.traces.plot(current_channels_list.fluct_arr.x, self.first_degree_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
 
-					self.traces.plot(dataset.datasets_list[rep].channels_list[i].fluct_arr.x, dataset.datasets_list[rep].channels_list[i].fluct_arr.y, label = dataset.datasets_list[rep].channels_list[i].short_name)
-
-					self.corr.plot(dataset.datasets_list[rep].channels_list[i].auto_corr_arr.x, dataset.datasets_list[rep].channels_list[i].auto_corr_arr.y, label = dataset.datasets_list[rep].channels_list[i].short_name)
+					self.corr.plot(current_channels_list.auto_corr_arr.x, current_channels_list.auto_corr_arr.y, label = current_channels_list.short_name)
 
 				for i in range (0, dataset.datasets_list[rep].cross_number):
 
@@ -704,7 +708,7 @@ class sFCS_frame:
 	def Empty_function(self):
 		print("Empty function invoked")
 
-	def Extract_trace(self):
+	def Extract_trace(self, bleaching_correction = False):
 
 		name = self.dataset_names [self.file_number]
 		sedec = Sidecut_sFCS(self.dataset_list[self.file_number])
@@ -790,7 +794,12 @@ class sFCS_frame:
 				x = x_full[start : end]
 				y = list_of_y[channel][start : end]
 
-
+				if(bleaching_correction):
+					popt, pcov = curve_fit(self.first_degree_bleaching, x, y)
+					y_bc = []	#bleaching corrected y
+					for i,ys in enumerate(y):
+						correction_factor = self.first_degree_bleaching(0, *popt)/self.first_degree_bleaching(x[i], *popt)
+						y_bc.append(ys*correction_factor)
 
 				min1 = min(x)
 
@@ -799,8 +808,10 @@ class sFCS_frame:
 				x = x1
 
 				
-
-				Tr = fcs_importer.XY_plot(x,y)
+				if(bleaching_correction):
+					Tr = fcs_importer.XY_plot(x,y_bc)
+				else:
+					Tr = fcs_importer.XY_plot(x,y)
 
 				timestep = x[1] - x[0]
 
@@ -948,9 +959,6 @@ class sFCS_frame:
 		#data_cont.peaks_list.append([None] * dataset.repetitions)
 
 		#data_cont.list_of_channel_pairs.append([None])
-
-
-
 		
 
 	def Tree_selection(self, event):
@@ -971,12 +979,11 @@ class sFCS_frame:
 		slices = 10
 
 		binned_data = eg.intensity_carpet_plot(1, bin_size=bins, n_slices = slices)
-
-		
-		self.image.imshow(binned_data,origin="lower")
+		bdf = binned_data.flatten()		#flatten to find max/min in list
+		val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
+		self.image.grid(False)	#deactivate grid
+		self.image.imshow(binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
 		self.canvas1.draw_idle()
-
-		
 
 		self.figure1.tight_layout()
 
@@ -1103,58 +1110,62 @@ class sFCS_frame:
 		self.Extract_button = tk.Button(self.frame023, text="Extract trace", command=self.Extract_trace)
 		self.Extract_button.grid(row = 0, column = 0, columnspan = 2, sticky="EW")
 
+		
+		self.Bleaching_button = tk.Button(self.frame023, text="Correct bleaching", command=lambda: self.Extract_trace(True))
+		self.Bleaching_button.grid(row = 1, column = 0, columnspan = 2, sticky="EW")
+
 		self.Binning_label = tk.Label(self.frame023,  text = "Pixel binning: ")
-		self.Binning_label.grid(row = 1, column = 0, sticky = 'ew')
+		self.Binning_label.grid(row = 2, column = 0, sticky = 'ew')
 
 
 		self.Binning__choice = ttk.Combobox(self.frame023,values = ["1","2","3"],  width = 18 )
 		self.Binning__choice.config(state = "readonly")
-		self.Binning__choice.grid(row = 1, column = 1, sticky = 'ew')
+		self.Binning__choice.grid(row = 2, column = 1, sticky = 'ew')
 		self.Binning__choice.set("3")
 
 		self.Repetitions_label = tk.Label(self.frame023,  text = "Repetitions: ")
-		self.Repetitions_label.grid(row = 2, column = 0, sticky = 'ew')
+		self.Repetitions_label.grid(row = 3, column = 0, sticky = 'ew')
 
 		self.Repetitions_entry = tk.Entry(self.frame023, width = 9)
-		self.Repetitions_entry.grid(row = 2, column = 1, sticky='ew')
+		self.Repetitions_entry.grid(row = 3, column = 1, sticky='ew')
 		self.Repetitions_entry.insert("end", str(1))
 
 		self.Timestep_label = tk.Label(self.frame023,  text = "Timestep: ")
-		self.Timestep_label.grid(row = 3, column = 0, sticky = 'ew')
+		self.Timestep_label.grid(row = 4, column = 0, sticky = 'ew')
 
 		self.Timestep_entry = tk.Entry(self.frame023, width = 9)
-		self.Timestep_entry.grid(row = 3, column = 1, sticky='ew')
+		self.Timestep_entry.grid(row = 4, column = 1, sticky='ew')
 		self.Timestep_entry.insert("end", str(0.001))
 
 		self.Display_label = tk.Label(self.frame023,  text = "Display: ")
-		self.Display_label.grid(row = 4, column = 0, columnspan = 2, sticky = 'w')
+		self.Display_label.grid(row = 5, column = 0, columnspan = 2, sticky = 'w')
 
 		self.Rep_Display_label = tk.Label(self.frame023,  text = "Repetition: ")
-		self.Rep_Display_label.grid(row = 5, column = 0, sticky = 'ew')
+		self.Rep_Display_label.grid(row = 6, column = 0, sticky = 'ew')
 
 		self.Rep_Display__choice = ttk.Combobox(self.frame023,values = ["1","2","3"],  width = 18 )
 		self.Rep_Display__choice.config(state = "readonly")
-		self.Rep_Display__choice.grid(row = 5, column = 1, sticky = 'ew')
+		self.Rep_Display__choice.grid(row = 6, column = 1, sticky = 'ew')
 		self.Rep_Display__choice.set("1")
 
 
 		self.Chan_Display_label = tk.Label(self.frame023,  text = "Channel: ")
-		self.Chan_Display_label.grid(row = 6, column = 0, sticky = 'ew')
+		self.Chan_Display_label.grid(row = 7, column = 0, sticky = 'ew')
 
 		self.channels_to_display = ['1']
 
 		self.Chan_Display__choice = ttk.Combobox(self.frame023,values = self.channels_to_display,  width = 18 )
 		self.Chan_Display__choice.config(state = "readonly")
-		self.Chan_Display__choice.grid(row = 6, column = 1, sticky = 'ew')
+		self.Chan_Display__choice.grid(row = 7, column = 1, sticky = 'ew')
 		self.Chan_Display__choice.set("all")
 
 
 
 		self.Display_button = tk.Button(self.frame023, text="Display", command=self.Plot_this_file)
-		self.Display_button.grid(row = 7, column = 0, columnspan =2, sticky="EW")
+		self.Display_button.grid(row = 8, column = 0, columnspan =2, sticky="EW")
 
 		self.Transfer_button = tk.Button(self.frame023, text="Transfer curve", command=self.Transfer_extracted)
-		self.Transfer_button.grid(row = 8, column = 0, columnspan =2, sticky="EW")
+		self.Transfer_button.grid(row = 9, column = 0, columnspan =2, sticky="EW")
 
 
 		self.figure1 = Figure(figsize=(0.85*win_height/dpi_all,0.85*win_height/dpi_all), dpi = dpi_all)
