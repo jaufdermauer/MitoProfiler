@@ -75,7 +75,7 @@ class Diffusion_window :
 		filename = data_cont.initialdirectory + "\\Plots_diffusion.txt"
 
 		open_file = open(filename, 'w')
-
+		print(self.save_plot_dict.keys())
 		for key in self.save_plot_dict.keys():
 			open_file.write(str(key) + "\n")
 
@@ -515,6 +515,8 @@ class Diffusion_window :
 				if self.fit_all_flag == False:
 					self.curves.scatter(x1, y1, label = data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name)
 
+					self.save_plot_dict [data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name] = fcs_importer.XY_plot(x1, y1)
+
 				k = i + len(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list)
 
 				if 	data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, k] != None:
@@ -531,9 +533,17 @@ class Diffusion_window :
 						
 						self.curves.plot(x1, fun.Corr_curve_2d(x1, *popt), label = "Fit")
 
+						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name) + " Fit"
+
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_2d(x1, *popt))
+
 					if len(popt) == 8:
 						
 						self.curves.plot(x1, fun.Corr_curve_3d(x1, *popt), label = "Fit")
+
+						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name) + " Fit"
+
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_3d(x1, *popt))
 
 
 

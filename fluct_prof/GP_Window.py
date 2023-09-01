@@ -209,7 +209,7 @@ class Threshold_window:
 		for key in dict_of_dfs.keys():
 			dict_of_dfs[key].to_excel(writer, sheet_name=key)
 
-		writer.save()
+		writer.close()
 
 
 
