@@ -15,6 +15,7 @@ import lmfit
 import time
 
 import tifffile
+import czifile
 
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 
@@ -711,7 +712,7 @@ class sFCS_frame:
 	def Extract_trace(self, bleaching_correction = False):
 
 		name = self.dataset_names [self.file_number]
-		sedec = Sidecut_sFCS(self.dataset_list[self.file_number])
+		sedec = Sidecut_sFCS(self.dataset_list[self.file_number], self.Scantype__choice.get())
 		if len(sedec.array.shape) == 3:
 			channels_number = sedec.array.shape[0]
 			array_length = sedec.array.shape[1]
@@ -976,7 +977,7 @@ class sFCS_frame:
 
 		self.file_number = num
 
-		eg= func.File_sFCS(self.dataset_list[self.file_number])
+		eg= func.File_sFCS(self.dataset_list[self.file_number], self.Scantype__choice.get())
 
 		bins = 1
 		slices = 1
@@ -985,7 +986,8 @@ class sFCS_frame:
 		bdf = binned_data.flatten()		#flatten to find max/min in list
 		val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
 		self.image.grid(False)	#deactivate grid
-		self.image.imshow(binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
+		truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:1000].T.tolist()
+		self.image.imshow(truncated_binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
 		self.canvas1.draw_idle()
 
 		self.figure1.tight_layout()
@@ -1005,7 +1007,7 @@ class sFCS_frame:
 		if data_cont.initialdirectory == '':
 			data_cont.initialdirectory = __file__
 
-		ftypes = [('LSM .lsm', '*.lsm'), ('Tif .tif', '*.tif'), ('All files', '*'), ]
+		ftypes = [('CZI .czi', '*.czi'),('LSM .lsm', '*.lsm'), ('Tif .tif', '*.tif'), ('All files', '*'), ]
 		
 
 		filenames =  tk.filedialog.askopenfilenames(initialdir=os.path.dirname(data_cont.initialdirectory),title = "Select file", filetypes = ftypes)
@@ -1138,7 +1140,7 @@ class sFCS_frame:
 
 		self.Timestep_entry = tk.Entry(self.frame023, width = 9)
 		self.Timestep_entry.grid(row = 4, column = 1, sticky='ew')
-		self.Timestep_entry.insert("end", str(0.001))
+		self.Timestep_entry.insert("end", str(0.000293))
 
 		self.Display_label = tk.Label(self.frame023,  text = "Display: ")
 		self.Display_label.grid(row = 5, column = 0, columnspan = 2, sticky = 'w')
@@ -1155,6 +1157,14 @@ class sFCS_frame:
 		self.Chan_Display_label = tk.Label(self.frame023,  text = "Channel: ")
 		self.Chan_Display_label.grid(row = 7, column = 0, sticky = 'ew')
 
+		self.Scantype_label = tk.Label(self.frame023,  text = "Scan type: ")
+		self.Scantype_label.grid(row = 8, column = 0, columnspan = 2, sticky = 'w')
+
+		self.Scantype__choice = ttk.Combobox(self.frame023,values = ["1 focus","2 focus"],  width = 18 )
+		self.Scantype__choice.config(state = "readonly")
+		self.Scantype__choice.grid(row = 9, column = 1, sticky = 'ew')
+		self.Scantype__choice.set("1 focus")
+
 		self.channels_to_display = ['1']
 
 		self.Chan_Display__choice = ttk.Combobox(self.frame023,values = self.channels_to_display,  width = 18 )
@@ -1165,10 +1175,10 @@ class sFCS_frame:
 
 
 		self.Display_button = tk.Button(self.frame023, text="Display", command=self.Plot_this_file)
-		self.Display_button.grid(row = 8, column = 0, columnspan =2, sticky="EW")
+		self.Display_button.grid(row = 10, column = 0, columnspan =2, sticky="EW")
 
 		self.Transfer_button = tk.Button(self.frame023, text="Transfer curve", command=self.Transfer_extracted)
-		self.Transfer_button.grid(row = 9, column = 0, columnspan =2, sticky="EW")
+		self.Transfer_button.grid(row = 11, column = 0, columnspan =2, sticky="EW")
 
 
 		self.figure1 = Figure(figsize=(0.85*win_height/dpi_all,0.85*win_height/dpi_all), dpi = dpi_all)
@@ -1224,10 +1234,39 @@ class sFCS_frame:
 
 
 class Sidecut_sFCS:
-	def __init__(self,lsm_file_name):
+	def __init__(self,lsm_file_name, scantype):
 		self.lsm_file_name = lsm_file_name
-		self.array =  tifffile.imread(self.lsm_file_name, key = 0)
-   
+		self.scantype = scantype
+		#read 1 line scanning FCS files
+		if self.scantype == "1 focus":
+			#read CZI
+			if lsm_file_name.endswith("czi"):
+				image = czifile.imread(self.lsm_file_name)
+				reshaped_image = np.empty((image.shape[2], image.shape[1], image.shape[5]), dtype = float)
+				for c in range(image.shape[2]):
+					for y in range(image.shape[5]):
+						for t in range(image.shape[1]):
+							reshaped_image[c,t,y] = image[0,t,c,0,0,y,0]
+				self.array = reshaped_image
+			
+			#read TIF
+			elif lsm_file_name.endswith("tif"):
+				image = tifffile.imread(self.lsm_file_name)
+				if len(image.shape) == 3:
+					self.array =  tifffile.imread(self.lsm_file_name)
+				elif len(image.shape) == 4:
+					self.array =  image.reshape((image.shape[1], image.shape[0], image.shape[3]))
+					print("tif reshaped")
+
+			#read LSM
+			else:
+				self.array = tifffile.imread(self.lsm_file_name, key = 0)
+			print(self.array.shape)
+
+		#read 2 line scanning FCS files
+		elif self.scantype == "2 focus":
+			print("sidecut")
+
 	def isolate_channel(self,channel_no):
 		if len(self.array.shape) == 2:
 			return self.array

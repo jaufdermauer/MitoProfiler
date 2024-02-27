@@ -1,4 +1,5 @@
 import tifffile
+import czifile
 import matplotlib.pyplot as plt
 import numpy as np
 import Correlation as corr_py
@@ -9,14 +10,72 @@ from fluct_prof import Analyse_sFCS_data_MLE_BIC as data_an
 
 
 class File_sFCS:
-    def __init__(self,lsm_file_name):
+    def __init__(self,lsm_file_name, scantype):
+        self.scantype = scantype
+        print(lsm_file_name)
         self.lsm_file_name = lsm_file_name
-        self.array =  tifffile.imread(self.lsm_file_name, key = 0)
-        print(type(self.array), self.array.shape)
-        
+        #read 1 line scanning FCS files
+        if self.scantype == "1 focus":
+		    #read CZI
+            if lsm_file_name.endswith("czi"):
+                image = czifile.imread(self.lsm_file_name)
+                reshaped_image = np.empty((image.shape[2], image.shape[1], image.shape[5]), dtype = float)
+                for c in range(image.shape[2]):
+                    for y in range(image.shape[5]):
+                        for t in range(image.shape[1]):
+                            reshaped_image[c,t,y] = image[0,t,c,0,0,y,0]
+                self.array = reshaped_image
+
+            #read TIF
+            elif lsm_file_name.endswith("tif"):
+                image = tifffile.imread(self.lsm_file_name)
+                if len(image.shape) == 3:
+                    self.array =  tifffile.imread(self.lsm_file_name)
+                elif len(image.shape) == 4:
+                    self.array =  image.reshape((image.shape[1], image.shape[0], image.shape[3]))
+                    print("tif reshaped")
+
+            #read LSM
+            else:
+                self.array = tifffile.imread(self.lsm_file_name, key = 0)
+                print(self.array.shape)
+
+        #read 2 line scanning FCS files
+        elif self.scantype == "2 focus":
+            print("File_sFCS")
+            #read CZI 2 line scanning file
+            if lsm_file_name.endswith("czi"):
+                image = czifile.imread(self.lsm_file_name)
+                print(image.shape)
+                reshaped_image = np.empty((image.shape[2], image.shape[1], 2, image.shape[5]), dtype = float)
+                for c in range(image.shape[2]):
+                    for y in range(image.shape[5]):
+                        for t in range(image.shape[1]):
+                            reshaped_image[c,t,0,y] = image[0,t,c,0,0,y,0] #first focus line
+                            reshaped_image[c,t,1,y] = image[0,t,c,0,1,y,0] #second focus line
+                self.array = reshaped_image
+
+            #read TIF
+            elif lsm_file_name.endswith("tif"):
+                image = tifffile.imread(self.lsm_file_name)
+                print(image.shape)
+                if len(image.shape) == 3:
+                    self.array =  tifffile.imread(self.lsm_file_name)
+                elif len(image.shape) == 4:
+                    self.array =  image.reshape((image.shape[1], image.shape[0], image.shape[3]))
+                    print("tif reshaped")
+
+            #read LSM
+            else:
+                self.array = tifffile.imread(self.lsm_file_name, key = 0)
+                print(self.array.shape)
+
     def isolate_channel(self,channel_no):
+        print(self.array.shape)
         if len(self.array.shape) == 2:
             return self.array
+        elif self.scantype == "2 focus":
+            print("here are 2 foci")
         else:
             return self.array[channel_no-1]
     
@@ -165,9 +224,24 @@ class File_sFCS:
 def Corr_curve_2d(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1):
     txy1 = txy1
     tauT1 = tauT1
-    G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))
+    G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))    #autocorrelation in 2D
     G_T = 1 + (B1*np.exp(tc/(-tauT1)))
     return offset + GN0 * G_Diff * G_T
+    
+#G_AC = 1/(C*np.pi*S*w0**2)*1/np.sqrt(1+4*D*tau/w0**2)*np.sqrt(1+4*D*tau/(w0**2*S**2))
+#G_CC = G_AC*np.exp(-d**2/(w0**2+4*D*tau))
+#A1 = 1/(C*np.pi*S*w0**2)
+#tc = tau
+#txy1 = tau_D = w0**2/(4*D)
+#S: structural parameter (=alpha1)
+#d: distance between 2 foci
+#w0: laser waist -> measure
+#D: diffusion coefficient = w0**2/(4*txy1)
+def CC_2FSFCCS(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1, d, w0):
+    txy1 = txy1
+    tauT1 = tauT1
+    G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))    #autocorrelation in 2D
+    G_d = np.exp(-d**2/(w0**2+w0**2*tc/txy1))
 
 def resid (params, x, ydata ):
     param_list = []    

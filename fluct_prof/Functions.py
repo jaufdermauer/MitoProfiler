@@ -930,11 +930,35 @@ def Export_function():
 				pass
 
 
-			open_file.write(line + "\n")
+			open_file.write(line + "\n\n")
 
+		#write CC in file
+		if len(chan.keys()) == 4:
+			open_file.write("CC:\n")
+			GN0s = np.zeros((4,len(data_c.output_numbers_dict[file1])), dtype = float)
 
+			#fill array with all GN0s
+			for n,name in enumerate(chan.keys()):
 
+				channel = chan[name]
 
+				for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
+					
+					GN0s[n][r] = data_c.data_list_raw[file1].diff_fitting[rep1, channel]["GN0"]
+			
+			#calculate CCs CH0 vs CH1
+			for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
+					
+				CC = round(GN0s[2,r]/(GN0s[2,r] + GN0s[1,r]),4)
+				line = "repetition" + str(r+1) + ": " + str(CC)
+				open_file.write(line + "\n")
+
+			#calculate CCs CH0 vs CH1
+			for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
+					
+				CC = round(GN0s[3,r]/(GN0s[3,r] + GN0s[0,r]), 4)
+				line = "repetition" + str(r+1) + ": " + str(CC)
+				open_file.write(line + "\n")
 
 		open_file.close()
 
@@ -1192,4 +1216,4 @@ def Export_function():
 		df_cpms [key].to_excel(writer, sheet_name=legend)
 
 
-	writer.save()
+	writer.close()

@@ -190,7 +190,11 @@ def Fill_datasets_fcs( list_file):
 
                     str1, str2 = long_name.split(" versus ")
                     str3, str4 = str1.split("Meta")
-                    str5, str6 = str2.split("Meta")
+
+                    if len(str2.split("Meta")) == 2:
+                        str5, str6 = str2.split("Meta")
+                    elif len(str2.split("detector Ch")) == 2:
+                        str5, str6 = str2.split("detector Ch")
                     
                     short_name = "channel " + str4 + " vs " + str(int(str6))
 
@@ -219,9 +223,11 @@ def Fill_datasets_fcs( list_file):
 
 
                 else:
+                    if len(long_name.split("Meta")) == 2:
+                        str1, str2 = long_name.split("Meta")
+                    elif len(long_name.split("detector Ch")) == 2:
+                        str5, str6 = long_name.split("detector Ch")
 
-                    str1, str2 = long_name.split("Meta")
-                
                     short_name = "channel " + str(int(str2))
                     
 

@@ -573,11 +573,9 @@ class Diffusion_window :
 						
 						self.curves.plot(x1, fun.Corr_curve_3d(x1, *popt), label = "Fit")
 
-<<<<<<< HEAD
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name) + " Fit"
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_3d(x1, *popt))
-=======
 					if len(popt) == 10:
 						
 						self.curves.plot(x1, fun.Corr_curve_2d_2(x1, *popt), label = "Fit")
@@ -585,7 +583,6 @@ class Diffusion_window :
 					if len(popt) == 12:
 						
 						self.curves.plot(x1, fun.Corr_curve_3d_2(x1, *popt), label = "Fit")
->>>>>>> master
 
 
 
