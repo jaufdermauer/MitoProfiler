@@ -70,6 +70,7 @@ from fluct_prof import Data_tree as d_tree
 
 from fluct_prof import Functions_sFCS as func
 
+
 #--------------------------
 #End of importing own modules
 #--------------------------
@@ -712,13 +713,21 @@ class sFCS_frame:
 	def Extract_trace(self, bleaching_correction = False):
 
 		name = self.dataset_names [self.file_number]
-		sedec = Sidecut_sFCS(self.dataset_list[self.file_number], self.Scantype__choice.get())
-		if len(sedec.array.shape) == 3:
+		if self.Scantype__choice.get() == "1 focus":
+			n_lines = 1
+			sedec = Sidecut_sFCS(self.dataset_list[self.file_number])
+			if len(sedec.array.shape) == 3:
+				channels_number = sedec.array.shape[0]
+				array_length = sedec.array.shape[1]
+			else:
+				channels_number = 1
+				array_length = sedec.array.shape[0]
+		elif self.Scantype__choice.get() == "2 focus":
+			n_lines = 2
+			sedec = Sidecut_2fsFCS(self.dataset_list[self.file_number])
 			channels_number = sedec.array.shape[0]
 			array_length = sedec.array.shape[1]
-		else:
-			channels_number = 1
-			array_length = sedec.array.shape[0]
+
 
 		print("shape ", sedec.array.shape)
 
@@ -744,6 +753,8 @@ class sFCS_frame:
 			#try:
 
 			y = sedec.isolate_maxima(channel_no, bins)
+
+			print(y.shape)
 
 			list_of_y.append(y)
 
@@ -777,59 +788,68 @@ class sFCS_frame:
 		dataset_list_arg = []
 		for rep_index_i in range (repetitions):
 
+			line_list_arg = []
 
-			channels_list_arg = []
+			for l in range(n_lines):
 
-			for channel in range (channels_number):
+				channels_list_arg = []
 
-				end = length_rep*(rep_index_i + 1)
-				start = end - length_rep
+				for channel in range (channels_number):
 
-				print(channel, rep_index_i, start, end)
+					end = length_rep*(rep_index_i + 1)
+					start = end - length_rep
 
-				if rep_index_i == repetitions-1:
+					print(channel, rep_index_i, start, end)
 
-					if end != len (x_full) - 1:
+					if rep_index_i == repetitions-1:
 
-						end = len (x_full) - 1
+						if end != len (x_full) - 1:
 
-				
+							end = len (x_full) - 1
 
-				x = x_full[start : end]
-				y = list_of_y[channel][start : end]
+					
 
-				if(bleaching_correction):
-					popt, pcov = curve_fit(self.first_degree_bleaching, x, y)
-					y_bc = []	#bleaching corrected y
-					for i,ys in enumerate(y):
-						correction_factor = self.first_degree_bleaching(0, *popt)/self.first_degree_bleaching(x[i], *popt)
-						y_bc.append(ys*correction_factor)
+					x = x_full[start : end]
+					if self.Scantype__choice.get() == "1 focus":
+						y = list_of_y[channel][start : end]
 
-				min1 = min(x)
+					elif self.Scantype__choice.get() == "2 focus":
+						y = list_of_y[channel][l][start : end]
 
-				x1 = [a - min1 for a in x]
+					if(bleaching_correction):
+						popt, pcov = curve_fit(self.first_degree_bleaching, x, y)
+						y_bc = []	#bleaching corrected y
+						for i,ys in enumerate(y):
+							correction_factor = self.first_degree_bleaching(0, *popt)/self.first_degree_bleaching(x[i], *popt)
+							y_bc.append(ys*correction_factor)
 
-				x = x1
+					min1 = min(x)
 
-				
-				if(bleaching_correction):
-					Tr = fcs_importer.XY_plot(x,y_bc)
-				else:
-					Tr = fcs_importer.XY_plot(x,y)
+					x1 = [a - min1 for a in x]
 
-				timestep = x[1] - x[0]
+					x = x1
 
-				x1, y1 = corr_py.correlate_full (timestep, np.array(Tr.y), np.array(Tr.y))
+					
+					if(bleaching_correction):
+						Tr = fcs_importer.XY_plot(x,y_bc)
+					else:
+						Tr = fcs_importer.XY_plot(x,y)
 
-				AutoCorr = fcs_importer.XY_plot(x1,y1)
+					timestep = x[1] - x[0]
 
-				long_name = name + "channel " + str(channel)
+					x1, y1 = corr_py.correlate_full (timestep, np.array(Tr.y), np.array(Tr.y))
 
-				short_name = "channel " + str(channel)
+					AutoCorr = fcs_importer.XY_plot(x1,y1)
 
-				Ch_dataset = fcs_importer.fcs_channel (long_name, Tr, AutoCorr, short_name)
+					long_name = name + "channel " + str(channel)
 
-				channels_list_arg.append(Ch_dataset)
+					short_name = "channel " + str(channel)
+
+					Ch_dataset = fcs_importer.fcs_channel (long_name, Tr, AutoCorr, short_name)
+
+					channels_list_arg.append(Ch_dataset)
+					
+				line_list_arg.append(channels_list_arg)
 
 			cross_list_arg = []
 
@@ -977,18 +997,37 @@ class sFCS_frame:
 
 		self.file_number = num
 
-		eg= func.File_sFCS(self.dataset_list[self.file_number], self.Scantype__choice.get())
+		if self.Scantype__choice.get() == "1 focus":
+			eg= func.File_sFCS(self.dataset_list[self.file_number])
 
-		bins = 1
-		slices = 1
+			bins = 1
+			slices = 1
 
-		binned_data = eg.intensity_carpet_plot(1, bin_size=bins, n_slices = slices)
-		bdf = binned_data.flatten()		#flatten to find max/min in list
-		val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
-		self.image.grid(False)	#deactivate grid
-		truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:1000].T.tolist()
-		self.image.imshow(truncated_binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
-		self.canvas1.draw_idle()
+			binned_data = eg.intensity_carpet_plot(1, bin_size=bins, n_slices = slices)
+			bdf = binned_data.flatten()		#flatten to find max/min in list
+			val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
+			self.image.grid(False)	#deactivate grid
+			truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:2000].T.tolist()
+			self.image.imshow(truncated_binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
+			self.canvas1.draw_idle()
+		
+		elif self.Scantype__choice.get() == "2 focus":
+			eg= func.File_2fsFCS(self.dataset_list[self.file_number])
+
+			bins = 1
+			slices = 1
+
+			binned_data = eg.intensity_carpet_plot(1, 0, bin_size=bins, n_slices = slices)
+			binned_data2 = eg.intensity_carpet_plot(1, 1, bin_size=bins, n_slices = slices)
+			bdf = binned_data.flatten()		#flatten to find max/min in list
+			val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
+			self.image.grid(False)	#deactivate grid
+			self.image2.grid(False)	#deactivate grid
+			truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:2000].T.tolist()
+			truncated_binned_data2 = np.array(np.array(binned_data2).T.tolist())[0:2000].T.tolist()
+			self.image.imshow(truncated_binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
+			self.image2.imshow(truncated_binned_data2,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
+			self.canvas1.draw_idle()
 
 		self.figure1.tight_layout()
 
@@ -1163,7 +1202,7 @@ class sFCS_frame:
 		self.Scantype__choice = ttk.Combobox(self.frame023,values = ["1 focus","2 focus"],  width = 18 )
 		self.Scantype__choice.config(state = "readonly")
 		self.Scantype__choice.grid(row = 9, column = 1, sticky = 'ew')
-		self.Scantype__choice.set("1 focus")
+		self.Scantype__choice.set("2 focus")
 
 		self.channels_to_display = ['1']
 
@@ -1186,20 +1225,24 @@ class sFCS_frame:
 
 
 
-		gs = self.figure1.add_gridspec(3, 1)
+		gs = self.figure1.add_gridspec(4, 1)
 
 
-		self.image = self.figure1.add_subplot(gs[0, 0])
+		self.image = self.figure1.add_subplot(gs[0,0])
 
-		self.image.set_title("sFCS image")
+		self.image.set_title("sFCS image line 1")
 
 		self.image.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		
+		self.image2 = self.figure1.add_subplot(gs[1,0])
 
+		self.image2.set_title("sFCS image line 2")
+
+		self.image2.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		
 
 
-		self.traces = self.figure1.add_subplot(gs[1, 0])
+		self.traces = self.figure1.add_subplot(gs[2, 0])
 
 		self.traces.set_title("Traces")
 
@@ -1209,7 +1252,7 @@ class sFCS_frame:
 		
 
 
-		self.corr = self.figure1.add_subplot(gs[2, 0])
+		self.corr = self.figure1.add_subplot(gs[3, 0])
 
 		self.corr.set_title("Correlation curves")
 		self.corr.set_ylabel('Diff. Coeff.')
@@ -1234,38 +1277,32 @@ class sFCS_frame:
 
 
 class Sidecut_sFCS:
-	def __init__(self,lsm_file_name, scantype):
+	def __init__(self,lsm_file_name):
 		self.lsm_file_name = lsm_file_name
-		self.scantype = scantype
 		#read 1 line scanning FCS files
-		if self.scantype == "1 focus":
 			#read CZI
-			if lsm_file_name.endswith("czi"):
-				image = czifile.imread(self.lsm_file_name)
-				reshaped_image = np.empty((image.shape[2], image.shape[1], image.shape[5]), dtype = float)
-				for c in range(image.shape[2]):
-					for y in range(image.shape[5]):
-						for t in range(image.shape[1]):
-							reshaped_image[c,t,y] = image[0,t,c,0,0,y,0]
-				self.array = reshaped_image
-			
-			#read TIF
-			elif lsm_file_name.endswith("tif"):
-				image = tifffile.imread(self.lsm_file_name)
-				if len(image.shape) == 3:
-					self.array =  tifffile.imread(self.lsm_file_name)
-				elif len(image.shape) == 4:
-					self.array =  image.reshape((image.shape[1], image.shape[0], image.shape[3]))
-					print("tif reshaped")
+		if lsm_file_name.endswith("czi"):
+			image = czifile.imread(self.lsm_file_name)
+			reshaped_image = np.empty((image.shape[2], image.shape[1], image.shape[5]), dtype = float)
+			for c in range(image.shape[2]):
+				for y in range(image.shape[5]):
+					for t in range(image.shape[1]):
+						reshaped_image[c,t,y] = image[0,t,c,0,0,y,0]
+			self.array = reshaped_image
+		
+		#read TIF
+		elif lsm_file_name.endswith("tif"):
+			image = tifffile.imread(self.lsm_file_name)
+			if len(image.shape) == 3:
+				self.array =  tifffile.imread(self.lsm_file_name)
+			elif len(image.shape) == 4:
+				self.array =  image.reshape((image.shape[1], image.shape[0], image.shape[3]))
+				print("tif reshaped")
 
-			#read LSM
-			else:
-				self.array = tifffile.imread(self.lsm_file_name, key = 0)
-			print(self.array.shape)
-
-		#read 2 line scanning FCS files
-		elif self.scantype == "2 focus":
-			print("sidecut")
+		#read LSM
+		else:
+			self.array = tifffile.imread(self.lsm_file_name, key = 0)
+		print(self.array.shape)
 
 	def isolate_channel(self,channel_no):
 		if len(self.array.shape) == 2:
@@ -1300,6 +1337,95 @@ class Sidecut_sFCS:
 			self.maxima.append(max_value)
 		self.maxima = np.array(self.maxima)
 		return self.maxima
+    
+	def maxs_single_autoc_plot(self, channel_no, rep_no, number_of_reps, timestep):
+		list_of_reps = np.array_split(self.isolate_maxima(channel_no), number_of_reps)
+		y = list_of_reps[rep_no-1]
+		time, scorr = corr_py.correlate_full (timestep, y, y)
+		plt.xscale("log")
+		plt.plot (time, scorr)
+		plt.tight_layout()
+		plt.show()
+        
+	def maxs_autoc_plots(self, channel_no, number_of_reps, timestep):
+		#plot correlation of each repetition,
+		list_of_reps = np.array_split(self.isolate_maxima(channel_no), number_of_reps)
+		for i in list_of_reps:
+			y = i
+			time, scorr = corr_py.correlate_full (timestep, y, y)
+			plt.xscale("log")
+			plt.plot (time, scorr)
+			plt.tight_layout()
+			plt.show()
+            
+		return time, scorr
+            
+	def maxs_autoc_carpet_plot(self, channel_no, timestep, number_of_reps, plot_title =''):
+		list_of_reps = np.array_split(self.isolate_maxima(channel_no), number_of_reps)
+		autocorrelation_by_rows = []
+		for i in range(len(list_of_reps)):
+			y = list_of_reps[i]
+			time, scorr = corr_py.correlate_full (timestep, y, y)
+			autocorrelation_by_rows.append(scorr)
+		fig, ax = plt.subplots(figsize=(100,10))
+		im = ax.imshow(autocorrelation_by_rows,origin="lower",cmap='bwr')
+		#cbar = ax.figure.colorbar(im, ax=ax,shrink=0.5,location='right', pad =0.003)
+		ax.set_title(plot_title)
+		plt.show()
+
+
+
+######################################## clone of Sidecut_sFCS for 2 focus sFCCS ######################################
+class Sidecut_2fsFCS:
+	def __init__(self,lsm_file_name):
+		self.lsm_file_name = lsm_file_name
+		#read 2 line scanning FCS files
+		print("File_2fsFCS")
+		#read CZI 2 line scanning file
+		if lsm_file_name.endswith("czi"):
+			image = czifile.imread(self.lsm_file_name)
+			print(image.shape)
+			reshaped_image = np.empty((image.shape[2], image.shape[1], 2, image.shape[5]), dtype = float)
+			for c in range(image.shape[2]):
+				for y in range(image.shape[5]):
+					for t in range(image.shape[1]):
+						reshaped_image[c,t,0,y] = image[0,t,c,0,0,y,0] #first focus line
+						reshaped_image[c,t,1,y] = image[0,t,c,0,1,y,0] #second focus line
+			self.array = reshaped_image
+
+	def isolate_channel(self,channel_no):
+		if len(self.array.shape) == 3:
+			return self.array
+		else:
+			return self.array[channel_no-1]
+        
+	def isolate_maxima(self, channel_no, bins):
+
+		if len(self.array.shape) == 4:
+			array_to_analyze = self.array[channel_no]
+
+		else:
+			array_to_analyze = self.array
+		self.maxima_2line = np.zeros((self.array.shape[2], self.array.shape[1]), dtype = float)
+		for line in range(2):
+			self.maxima = []
+			for i,i_array in enumerate(array_to_analyze[:,line,:]): 
+			
+				max_value = 0
+				max_index = 0
+				for j in range(0,len(i_array)):
+					if i_array[j] > max_value:
+						max_value = i_array[j]
+						max_index = j
+				try:
+					for j in range (0, bins-1):
+						max_value += i[max_index - j] + i_array[max_index + j]
+
+				except:
+					max_value = 0
+
+				self.maxima_2line[line,i] = max_value
+		return self.maxima_2line
     
 	def maxs_single_autoc_plot(self, channel_no, rep_no, number_of_reps, timestep):
 		list_of_reps = np.array_split(self.isolate_maxima(channel_no), number_of_reps)
