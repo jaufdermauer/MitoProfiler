@@ -753,8 +753,8 @@ class sFCS_frame:
 			#try:
 
 			y = sedec.isolate_maxima(channel_no, bins)
-
-			print(y.shape)
+			print("y", y)
+			#print("y shape", y.shape)
 
 			list_of_y.append(y)
 
@@ -786,9 +786,10 @@ class sFCS_frame:
 
 		
 		dataset_list_arg = []
+		#autocorrelation
 		for rep_index_i in range (repetitions):
 
-			line_list_arg = []
+			lines_list_arg = []
 
 			for l in range(n_lines):
 
@@ -799,7 +800,7 @@ class sFCS_frame:
 					end = length_rep*(rep_index_i + 1)
 					start = end - length_rep
 
-					print(channel, rep_index_i, start, end)
+					#print(channel, rep_index_i, start, end)
 
 					if rep_index_i == repetitions-1:
 
@@ -808,7 +809,7 @@ class sFCS_frame:
 							end = len (x_full) - 1
 
 					
-
+					#print("list of y", len(list_of_y), len(list_of_y[0]))
 					x = x_full[start : end]
 					if self.Scantype__choice.get() == "1 focus":
 						y = list_of_y[channel][start : end]
@@ -849,46 +850,19 @@ class sFCS_frame:
 
 					channels_list_arg.append(Ch_dataset)
 					
-				line_list_arg.append(channels_list_arg)
+				lines_list_arg.append(channels_list_arg)
 
-			cross_list_arg = []
+			lines_cross_list_arg = []
 
-			if channels_number > 1:
-				channel1 = 0
-				while channel1 < channels_number:
-				#for channel1 in range (0, channels_number):
-					end = length_rep*(rep_index_i + 1)
-					start = end - length_rep
+			#cross correlation between channels
+			for l in range(n_lines):
 
-					#print(channel, rep_index_i, start, end)
+				cross_list_arg = []
 
-					if rep_index_i == repetitions-1:
-
-						if end != len (x_full) - 1:
-
-							end = len (x_full) - 1
-
-					
-
-					x = x_full[start : end]
-					y = list_of_y[channel1][start : end]
-
-
-
-					min1 = min(x)
-
-					x1 = [a - min1 for a in x]
-
-					x = x1
-
-					
-
-					Tr1 = fcs_importer.XY_plot(x,y)
-
-					channel2 = channel1 + 1
-					while channel2 < channels_number:
-
-					#for channel2 in range (channel1 +1, channels_number):
+				if channels_number > 1:
+					channel1 = 0
+					while channel1 < channels_number-1:
+					#for channel1 in range (0, channels_number):
 						end = length_rep*(rep_index_i + 1)
 						start = end - length_rep
 
@@ -903,9 +877,124 @@ class sFCS_frame:
 						
 
 						x = x_full[start : end]
-						y = list_of_y[channel2][start : end]
+
+						if self.Scantype__choice.get() == "1 focus":
+							y = list_of_y[channel1][start : end]
+
+						elif self.Scantype__choice.get() == "2 focus":
+							y = list_of_y[channel1][l][start : end]
+
+						#print("cc line ", l, "ch1", y)
+
+						min1 = min(x)
+
+						x1 = [a - min1 for a in x]
+
+						x = x1
+
+						
+
+						Tr1 = fcs_importer.XY_plot(x,y)
+
+						channel2 = channel1 + 1
+						while channel2 < channels_number:
+
+						#for channel2 in range (channel1 +1, channels_number):
+							end = length_rep*(rep_index_i + 1)
+							start = end - length_rep
+
+							#print(channel, rep_index_i, start, end)
+
+							if rep_index_i == repetitions-1:
+
+								if end != len (x_full) - 1:
+
+									end = len (x_full) - 1
+
+							
+
+							x = x_full[start : end]
+
+							if self.Scantype__choice.get() == "1 focus":
+								y = list_of_y[channel2][start : end]
+
+							elif self.Scantype__choice.get() == "2 focus":
+								y = list_of_y[channel2][l][start : end]
 
 
+
+							min1 = min(x)
+
+							x1 = [a - min1 for a in x]
+
+							x = x1
+
+							#print("cc line ", l, "ch2", y)
+
+							Tr2 = fcs_importer.XY_plot(x,y)
+
+							timestep = Tr1.x[1] - Tr1.x[0]
+
+							x1, y1 = corr_py.correlate_full (timestep, np.array(Tr1.y), np.array(Tr2.y))
+
+							CrossCorr_12 = fcs_importer.XY_plot(x1,y1)
+
+							short_name_12 = "channel " + str(channel1) + " vs " + "channel " + str(channel2)
+
+							x1, y1 = corr_py.correlate_full (timestep, np.array(Tr2.y), np.array(Tr1.y))
+
+							CrossCorr_21 = fcs_importer.XY_plot(x1,y1)
+
+							short_name_21 = "channel " + str(channel2) + " vs " + "channel " + str(channel1)
+
+							Cross_dataset = fcs_importer.fcs_cross (short_name_12, CrossCorr_12, short_name_12)
+							cross_list_arg.append(Cross_dataset)
+							Cross_dataset = fcs_importer.fcs_cross (short_name_21, CrossCorr_21, short_name_21)
+							cross_list_arg.append(Cross_dataset)
+
+							channel2 += 1
+
+						channel1 += 1
+
+				lines_cross_list_arg.append(cross_list_arg)
+
+			############# CROSS CORRELATION BETWEEN LINES FOR EACH CHANNEL AND EACH REPETITION
+
+			if self.Scantype__choice.get() == "2 focus":
+				cross_list_arg = []
+				if channels_number > 1:
+					channel = 0
+					while channel < channels_number:
+					#for channel1 in range (0, channels_number):
+						end = length_rep*(rep_index_i + 1)
+						start = end - length_rep
+
+						#print(channel, rep_index_i, start, end)
+
+						if rep_index_i == repetitions-1:
+
+							if end != len (x_full) - 1:
+
+								end = len (x_full) - 1
+
+						
+
+						x = x_full[start : end]
+						y = list_of_y[channel][0][start : end]
+
+						#print(y)
+
+						min1 = min(x)
+
+						x1 = [a - min1 for a in x]
+
+						x = x1
+
+						
+
+						Tr1 = fcs_importer.XY_plot(x,y)
+
+						y = list_of_y[channel][1][start : end]
 
 						min1 = min(x)
 
@@ -923,29 +1012,28 @@ class sFCS_frame:
 
 						CrossCorr_12 = fcs_importer.XY_plot(x1,y1)
 
-						short_name_12 = "channel " + str(channel1) + " vs " + "channel " + str(channel2)
+						short_name_12 = "channel " + str(channel) + " line 1" +  " vs " + "line 2"
 
 						x1, y1 = corr_py.correlate_full (timestep, np.array(Tr2.y), np.array(Tr1.y))
 
 						CrossCorr_21 = fcs_importer.XY_plot(x1,y1)
 
-						short_name_21 = "channel " + str(channel2) + " vs " + "channel " + str(channel1)
+						short_name_21 = "channel " + str(channel) + " line 2" +  " vs " + "line 1"
 
 						Cross_dataset = fcs_importer.fcs_cross (short_name_12, CrossCorr_12, short_name_12)
 						cross_list_arg.append(Cross_dataset)
 						Cross_dataset = fcs_importer.fcs_cross (short_name_21, CrossCorr_21, short_name_21)
 						cross_list_arg.append(Cross_dataset)
 
-						channel2 += 1
-
-					channel1 += 1
-
-
+						channel += 1
+				lines_cross_list_arg.append(cross_list_arg)
+			####END#####
 
 
 
+			print(len(channels_list_arg), len(cross_list_arg))
 
-			FCS_Dataset =  fcs_importer.Dataset_fcs(channels_number, len(cross_list_arg), channels_list_arg, cross_list_arg )
+			FCS_Dataset =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[-1]), lines_list_arg[0], lines_cross_list_arg[-1])
 
 			dataset_list_arg.append(FCS_Dataset)
 
@@ -1390,7 +1478,9 @@ class Sidecut_2fsFCS:
 				for y in range(image.shape[5]):
 					for t in range(image.shape[1]):
 						reshaped_image[c,t,0,y] = image[0,t,c,0,0,y,0] #first focus line
-						reshaped_image[c,t,1,y] = image[0,t,c,0,1,y,0] #second focus line
+						reshaped_image[c,t,1,y] = image[0,t,c,0,10,y,0] #second focus line
+					
+
 			self.array = reshaped_image
 
 	def isolate_channel(self,channel_no):
@@ -1400,30 +1490,33 @@ class Sidecut_2fsFCS:
 			return self.array[channel_no-1]
         
 	def isolate_maxima(self, channel_no, bins):
-
-		if len(self.array.shape) == 4:
+		#print("self array shape", self.array.shape)
+		if len(self.array.shape) == 4:	#dual color
 			array_to_analyze = self.array[channel_no]
-
-		else:
-			array_to_analyze = self.array
+		else:	#single color
+			array_to_analyze = np.array(self.array)
 		self.maxima_2line = np.zeros((self.array.shape[2], self.array.shape[1]), dtype = float)
+		#print("array to analyze line1", array_to_analyze[0,0,0:100])
+		#print("array to analyze line2", array_to_analyze[0,1,0:100])
 		for line in range(2):
 			self.maxima = []
-			for i,i_array in enumerate(array_to_analyze[:,line,:]): 
-			
+			#print(line)
+			for i in range(array_to_analyze.shape[0]): #time
 				max_value = 0
 				max_index = 0
-				for j in range(0,len(i_array)):
-					if i_array[j] > max_value:
-						max_value = i_array[j]
+				for j in range(0,array_to_analyze.shape[2]):	#y
+					if array_to_analyze[i,line,j] > max_value:
+						max_value = array_to_analyze[i,line,j]
 						max_index = j
 				try:
 					for j in range (0, bins-1):
-						max_value += i[max_index - j] + i_array[max_index + j]
+						max_value += array_to_analyze[i,line,max_index - j] + array_to_analyze[i,line,max_index + j]
 
 				except:
-					max_value = 0
-
+					print("border pixel")
+					#max_value = 0
+				
+				#print(max_value)
 				self.maxima_2line[line,i] = max_value
 		return self.maxima_2line
     

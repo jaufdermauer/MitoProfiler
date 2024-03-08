@@ -21,6 +21,7 @@ def correlate_full (timestep, a, b):
     #Calculates smoothed version of curve using logarithmic bins.
     bins = logbins(a.size//2, 64)
     scorr = smooth(binaver(corr,bins))
+    #scorr = binaver(corr,bins)
 
     time = bins*timestep
 
@@ -68,18 +69,15 @@ def logbins(size, nbins):
     return np.unique(b.astype('intp'))
 
 
-def smooth(c):
+def smooth(c, strength = 0.7):
     """Return double exponentially smoothed vector."""
     out = c.copy()
     out[0] = out[1]
     for i in range(1, len(out)):
-        out[i] = out[i] * 0.3 + out[i-1] * 0.7
+        out[i] = out[i] * (1-strength) + out[i-1] * strength
     for i in range(len(out)-2, -1, -1):
-        out[i] = out[i] * 0.3 + out[i+1] * 0.7
+        out[i] = out[i] * (1-strength) + out[i+1] * strength
     return np.array(out)
-
-
-
 
 
 

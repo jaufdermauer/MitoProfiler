@@ -208,7 +208,7 @@ class File_2fsFCS:
                 for y in range(image.shape[5]):
                     for t in range(image.shape[1]):
                         reshaped_image[c,t,0,y] = image[0,t,c,0,0,y,0] #first focus line
-                        reshaped_image[c,t,1,y] = image[0,t,c,0,1,y,0] #second focus line
+                        reshaped_image[c,t,1,y] = image[0,t,c,0,10,y,0] #second focus line
             self.array = reshaped_image
 
         #read TIF
@@ -396,6 +396,13 @@ def Corr_curve_2d(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1):
     G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))    #autocorrelation in 2D
     G_T = 1 + (B1*np.exp(tc/(-tauT1)))
     return offset + GN0 * G_Diff * G_T
+
+def CC_2FSFCCS(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1, d, w0):
+    txy1 = txy1
+    tauT1 = tauT1
+    G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))    #autocorrelation in 2D
+    G_d = np.exp(-d**2/(w0**2+w0**2*tc/txy1))
+    return offset + GN0 * G_Diff * G_d
 
 def resid (params, x, ydata ):
     param_list = []    
