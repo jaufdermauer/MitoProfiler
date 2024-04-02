@@ -96,13 +96,13 @@ class Left_frame :
 
 		self.corr.cla()
 
-
-
 		for i in range (datasets_pos.datasets_list[rep].channels_number): 
 
 			
 
 			if self.channels_flags[datasets_pos.datasets_list[rep].channels_list[i].short_name].get() == 1:
+
+				
 
 				self.traces.plot(datasets_pos.datasets_list[rep].channels_list[i].fluct_arr.x, datasets_pos.datasets_list[rep].channels_list[i].fluct_arr.y, label = datasets_pos.datasets_list[rep].channels_list[i].short_name)
 
@@ -460,8 +460,8 @@ class Left_frame :
 
 		for item in data_cont.data_list_raw[file_index_local].datasets_list[data_cont.rep_index].cross_list:
 			str1, str2 = item.short_name.split(" vs ")
-			str3, str4 = str1.split(" ")
-			very_short_name = "ch" + str4 + str2
+			strs = str1.split(" ")
+			very_short_name = "ch" + strs[1] + str2
 			self.channels_flags[item.short_name] = tk.IntVar(value=1)
 			self.flags_dict[item.short_name] = tk.Checkbutton(self.frame0003, text=very_short_name, variable=self.channels_flags[item.short_name], command = self.Select_Unselect)
 			self.flags_dict[item.short_name].grid(row = 0, column = column_counter, sticky='w')
@@ -667,7 +667,7 @@ class sFCS_frame:
 			if channel == 'all':
 
 				print("Dataset list length", len(dataset.datasets_list))
-
+				#print(dataset.datasets_list[rep].channels_list[0].fluct_arr.y)
 				for i in range (0, dataset.datasets_list[rep].channels_number): 
 					current_channels_list = dataset.datasets_list[rep].channels_list[i]
 					#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
@@ -811,6 +811,13 @@ class sFCS_frame:
 					
 					#print("list of y", len(list_of_y), len(list_of_y[0]))
 					x = x_full[start : end]
+					
+					min1 = min(x)
+
+					x1 = [a - min1 for a in x]
+
+					x = x1
+
 					if self.Scantype__choice.get() == "1 focus":
 						y = list_of_y[channel][start : end]
 
@@ -819,19 +826,13 @@ class sFCS_frame:
 
 					if(bleaching_correction):
 						popt, pcov = curve_fit(self.first_degree_bleaching, x, y)
+						print(popt)
 						y_bc = []	#bleaching corrected y
 						for i,ys in enumerate(y):
 							correction_factor = self.first_degree_bleaching(0, *popt)/self.first_degree_bleaching(x[i], *popt)
+							#print(correction_factor)
 							y_bc.append(ys*correction_factor)
 
-					min1 = min(x)
-
-					x1 = [a - min1 for a in x]
-
-					x = x1
-
-					
-					if(bleaching_correction):
 						Tr = fcs_importer.XY_plot(x,y_bc)
 					else:
 						Tr = fcs_importer.XY_plot(x,y)
@@ -958,7 +959,7 @@ class sFCS_frame:
 
 				lines_cross_list_arg.append(cross_list_arg)
 
-			############# CROSS CORRELATION BETWEEN LINES FOR EACH CHANNEL AND EACH REPETITION
+			############# CROSS CORRELATION BETWEEN LINES FOR EACH CHANNEL AND EACH REPETITION ####################
 
 			if self.Scantype__choice.get() == "2 focus":
 				cross_list_arg = []
@@ -989,8 +990,6 @@ class sFCS_frame:
 						x1 = [a - min1 for a in x]
 
 						x = x1
-
-						
 
 						Tr1 = fcs_importer.XY_plot(x,y)
 
@@ -1031,8 +1030,12 @@ class sFCS_frame:
 
 
 
-			print(len(channels_list_arg), len(cross_list_arg))
-
+			print(len(channels_list_arg), len(cross_list_arg), len(lines_cross_list_arg))
+			
+			#for 2fsFCCS:
+			#lines_cross_list_arg[0]: CC line 1
+			#lines_cross_list_arg[1]: CC line 2
+			#lines_cross_list_arg[2]: CC between lines
 			FCS_Dataset =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[-1]), lines_list_arg[0], lines_cross_list_arg[-1])
 
 			dataset_list_arg.append(FCS_Dataset)
@@ -1373,9 +1376,9 @@ class Sidecut_sFCS:
 			image = czifile.imread(self.lsm_file_name)
 			reshaped_image = np.empty((image.shape[2], image.shape[1], image.shape[5]), dtype = float)
 			for c in range(image.shape[2]):
-				for y in range(image.shape[5]):
-					for t in range(image.shape[1]):
-						reshaped_image[c,t,y] = image[0,t,c,0,0,y,0]
+					for y in range(image.shape[5]):
+						for t in range(image.shape[1]):
+							reshaped_image[c,t,y] = image[0,t,c,0,0,y,0]
 			self.array = reshaped_image
 		
 		#read TIF
@@ -1473,15 +1476,29 @@ class Sidecut_2fsFCS:
 		if lsm_file_name.endswith("czi"):
 			image = czifile.imread(self.lsm_file_name)
 			print(image.shape)
-			reshaped_image = np.empty((image.shape[2], image.shape[1], 2, image.shape[5]), dtype = float)
-			for c in range(image.shape[2]):
-				for y in range(image.shape[5]):
-					for t in range(image.shape[1]):
-						reshaped_image[c,t,0,y] = image[0,t,c,0,0,y,0] #first focus line
-						reshaped_image[c,t,1,y] = image[0,t,c,0,10,y,0] #second focus line
+			if image.shape[2] == 4:	#2fsFCCS
+				reshaped_image = np.empty((2, image.shape[1], 2, image.shape[5]), dtype = float)
+				for c in range(2):
+					for y in range(image.shape[5]):
+						for t in range(image.shape[1]):
+							reshaped_image[c,t,0,y] = image[0,t,2*c+1,0,0,y,0] #first focus line
+							reshaped_image[c,t,1,y] = image[0,t,2*c+1,0,-1,y,0] #second focus line
+			else:
+				reshaped_image = np.empty((image.shape[2], image.shape[1], 2, image.shape[5]), dtype = float)
+				for c in range(image.shape[2]):
+					for y in range(image.shape[5]):
+						for t in range(image.shape[1]):
+							reshaped_image[c,t,0,y] = image[0,t,c,0,0,y,0] #first focus line
+							reshaped_image[c,t,1,y] = image[0,t,c,0,-1,y,0] #second focus line
 					
 
 			self.array = reshaped_image
+
+		#read TIF
+		elif lsm_file_name.endswith("tif"):
+			image = tifffile.imread(self.lsm_file_name)
+			print(image.shape)
+			self.array =  tifffile.imread(self.lsm_file_name)
 
 	def isolate_channel(self,channel_no):
 		if len(self.array.shape) == 3:
@@ -1505,6 +1522,8 @@ class Sidecut_2fsFCS:
 				max_value = 0
 				max_index = 0
 				for j in range(0,array_to_analyze.shape[2]):	#y
+					if array_to_analyze[i,line,j] < 0:
+						print(array_to_analyze[i,line,j])
 					if array_to_analyze[i,line,j] > max_value:
 						max_value = array_to_analyze[i,line,j]
 						max_index = j

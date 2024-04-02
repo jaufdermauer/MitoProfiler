@@ -203,23 +203,28 @@ class File_2fsFCS:
         if lsm_file_name.endswith("czi"):
             image = czifile.imread(self.lsm_file_name)
             print(image.shape)
-            reshaped_image = np.empty((image.shape[2], image.shape[1], 2, image.shape[5]), dtype = float)
-            for c in range(image.shape[2]):
-                for y in range(image.shape[5]):
-                    for t in range(image.shape[1]):
-                        reshaped_image[c,t,0,y] = image[0,t,c,0,0,y,0] #first focus line
-                        reshaped_image[c,t,1,y] = image[0,t,c,0,10,y,0] #second focus line
+            if image.shape[2] == 4:	#2fsFCCS
+                reshaped_image = np.empty((2, image.shape[1], 2, image.shape[5]), dtype = float)
+                for c in range(2):
+                    for y in range(image.shape[5]):
+                        for t in range(image.shape[1]):
+                            reshaped_image[c,t,0,y] = image[0,t,2*c+1,0,0,y,0] #first focus line
+                            reshaped_image[c,t,1,y] = image[0,t,2*c+1,0,-1,y,0] #second focus line
+            else:
+                reshaped_image = np.empty((image.shape[2], image.shape[1], 2, image.shape[5]), dtype = float)
+                for c in range(image.shape[2]):
+                    for y in range(image.shape[5]):
+                        for t in range(image.shape[1]):
+                            reshaped_image[c,t,0,y] = image[0,t,c,0,0,y,0] #first focus line
+                            reshaped_image[c,t,1,y] = image[0,t,c,0,-1,y,0] #second focus line
             self.array = reshaped_image
+
 
         #read TIF
         elif lsm_file_name.endswith("tif"):
             image = tifffile.imread(self.lsm_file_name)
             print(image.shape)
-            if len(image.shape) == 3:
-                self.array =  tifffile.imread(self.lsm_file_name)
-            elif len(image.shape) == 4:
-                self.array =  image.reshape((image.shape[1], image.shape[0], image.shape[3]))
-                print("tif reshaped")
+            self.array =  tifffile.imread(self.lsm_file_name)
 
         #read LSM
         else:
@@ -397,13 +402,6 @@ def Corr_curve_2d(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1):
     G_T = 1 + (B1*np.exp(tc/(-tauT1)))
     return offset + GN0 * G_Diff * G_T
 
-def CC_2FSFCCS(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1, d, w0):
-    txy1 = txy1
-    tauT1 = tauT1
-    G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))    #autocorrelation in 2D
-    G_d = np.exp(-d**2/(w0**2+w0**2*tc/txy1))
-    return offset + GN0 * G_Diff * G_d
-
 def resid (params, x, ydata ):
     param_list = []    
     for param in params.keys():
@@ -418,3 +416,36 @@ def params_lists_to_object(list_of_params, list_of_inits, list_of_vary, list_of_
         params.add(list_of_params[i], float(list_of_inits[i]), vary = int(list_of_vary[i]), 
                    min = float(list_of_min[i]), max = float(list_of_max[i]))
     return params
+
+## 2fsFCCS correlation functions ##
+
+#2fsFCCS CC curve between lines with old parameters
+def CC_2FSFCCS_old(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1, d, w0):
+    txy1 = txy1
+    tauT1 = tauT1
+    G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))    #autocorrelation in 2D
+    G_d = np.exp(-d**2/(w0**2+w0**2*tc/txy1))
+    return offset + GN0 * G_Diff * G_d
+
+#new parameters:
+# C = N / (pi**(3/2)*w0**3*S) concentration
+# S: structural parameter
+# w0 waist radius
+# D: diffusion coefficient
+# tau: time shift
+# d: distance between 2 lines
+# tau_D = w0**2 / (4*D) diffusion time
+# tau_T: triplet time
+# T: triplet state population
+
+#sFCCS CC curve in 2 dimensions
+def CC_FCCS_2d(tau, offset, D, tau_T, T, w0, S, C):
+    G_auto = 1/(C*np.pi**(3/2)*w0**3*S)*(1+4*D*tau/w0**2)**(-1)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
+    G_T = 1 + T/(1-T) * np.exp(-tau/(tau_T))
+    return offset + G_auto * G_T
+
+#2fsFCCS CC curve between lines with new parameters
+def CC_2fsFCCS_2d(tau, offset, C, S, D, w0, d):
+    G_auto = 1/(C*np.pi*S*w0**2)*(1+4*D*tau/w0**2)**(-1/2)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
+    G_CC = np.exp(-d**2/(4*D*tau+w0**2))
+    return offset + G_auto * G_CC

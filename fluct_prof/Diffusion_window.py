@@ -402,8 +402,11 @@ class Diffusion_window :
 				self.D_value[ii].config(text = str(data_cont.data_list_raw[data_cont.file_index].diff_coeffs[data_cont.rep_index, self.channel_index][ii]))
 
 		if self.channel_index < data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_number:
-
-			data_cont.data_list_raw[data_cont.file_index].N[data_cont.rep_index, self.channel_index] = round(1/params["GN0"].value,3)
+			if self.Lines.get() == '2 lines':
+				N = params["C"].value * (np.pi**(3/2)*params["w0"].value*3*params["S"].value)
+				data_cont.data_list_raw[data_cont.file_index].N[data_cont.rep_index, self.channel_index] = round(N,3)
+			else:
+				data_cont.data_list_raw[data_cont.file_index].N[data_cont.rep_index, self.channel_index] = round(1/params["GN0"].value,3)
 			data_cont.data_list_raw[data_cont.file_index].cpm[data_cont.rep_index, self.channel_index] = round(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[self.channel_index].count_rate/data_cont.data_list_raw[data_cont.file_index].N[data_cont.rep_index, self.channel_index],3)
 			
 
@@ -439,20 +442,26 @@ class Diffusion_window :
 
 		
 
+		if self.Lines.get() == '2 lines single' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D":
+
+			y_model = fun.CC_FCCS_2d(x, *param_list)
 		
+		elif self.Lines.get() == '2 lines' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D":
+
+			y_model = fun.CC_2fsFCCS_2d(x, *param_list)
 		
-		if self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "3D":
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "3D":
 
 			y_model = fun.Corr_curve_3d(x, *param_list)
 
-		if self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D":
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D":
 			y_model = fun.Corr_curve_2d(x, *param_list)
 
-		if self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "3D":
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "3D":
 
 			y_model = fun.Corr_curve_3d_2(x, *param_list)
 
-		if self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "2D":
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "2D":
 			y_model = fun.Corr_curve_2d_2(x, *param_list)
 
 
@@ -500,8 +509,24 @@ class Diffusion_window :
 
 						popt.append(np.float64(data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, i][key]))
 
+					if self.Lines.get() == '2 lines':
 
-					if len(popt) == 7:
+						self.curves.plot(x1, fun.CC_2fsFCCS_2d(x1, *popt), label = "Fit")
+
+						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
+
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_2fsFCCS_2d(x1, *popt))
+
+					elif self.Lines.get() == '2 lines single':
+
+						self.curves.plot(x1, fun.CC_FCCS_2d(x1, *popt), label = "Fit")
+
+						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
+
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_FCCS_2d(x1, *popt))
+
+
+					elif len(popt) == 7:
 						
 						self.curves.plot(x1, fun.Corr_curve_2d(x1, *popt), label = "Fit")
 
@@ -510,7 +535,7 @@ class Diffusion_window :
 						
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_2d(x1, *popt))
 
-					if len(popt) == 8:
+					elif len(popt) == 8:
 						
 						self.curves.plot(x1, fun.Corr_curve_3d(x1, *popt), label = "Fit")
 
@@ -518,7 +543,7 @@ class Diffusion_window :
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_3d(x1, *popt))
 
-					if len(popt) == 10:
+					elif len(popt) == 10:
 						
 						self.curves.plot(x1, fun.Corr_curve_2d_2(x1, *popt), label = "Fit")
 
@@ -527,7 +552,7 @@ class Diffusion_window :
 						
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_2d_2(x1, *popt))
 
-					if len(popt) == 12:
+					elif len(popt) == 12:
 						
 						self.curves.plot(x1, fun.Corr_curve_3d_2(x1, *popt), label = "Fit")
 
@@ -560,6 +585,9 @@ class Diffusion_window :
 
 						popt.append(np.float64(data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, k][key]))
 
+					if self.Lines.get() == '2 lines':
+						
+						self.curves.plot(x1, fun.CC_2fsFCCS_2d(x1, *popt), label = "Fit")
 
 					if len(popt) == 7:
 						
@@ -751,28 +779,42 @@ class Diffusion_window :
 		Label_1 = tk.Label(self.frame004, text=text1)
 		Label_1.grid(row = 0, column = 0, columnspan = 6, sticky = 'w')
 
-		if self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "3D" :
+		if self.Lines.get() == '2 lines' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D" :
+
+			self.list_of_params = ['offset', 'C', 'S', 'D', 'w0', 'd']
+			self.list_of_inits = ['0', '1', '1', '1', '200', '400']
+			self.list_of_min = ['0', '0', '0', '0', '0', '0', '0', '0']
+			self.list_of_max = ['10', '1000', '10', '100', '10000', '10000']
+
+		if self.Lines.get() == '2 lines single' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D" :
+
+			self.list_of_params = ['offset', 'C', 'D', 'T', 'tau_T', 'w0', 'S']
+			self.list_of_inits = ['0', '1', '1', '1', '0.005', '200', '400']
+			self.list_of_min = ['0', '0', '0', '0', '0', '0', '0']
+			self.list_of_max = ['10', '1000', '100', '100', '10', '10000', '10']
+
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "3D" :
 
 			self.list_of_params = ['offset', 'GN0', 'A', 'txy', 'alpha', 'AR', 'B', 'T_tri' ]
 			self.list_of_inits = ['1', '1', '1', '0.02', '1', '5', '1', '0.005']
 			self.list_of_min = ['0', '0', '0', '0', '0', '0', '0', '0']
 			self.list_of_max = ['10', '5', '1', '100000', '20', '20', '1', '100']
 
-		if self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D" :
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D" :
 
 			self.list_of_params = ['offset', 'GN0', 'A', 'txy', 'alpha', 'B', 'T_tri' ]
 			self.list_of_inits = ['1', '1', '1', '0.02', '1', '1', '0.005']
 			self.list_of_min = ['0', '0', '0', '0', '0',  '0', '0']
 			self.list_of_max = ['10', '5', '1', '100000', '20', '1', '100']
 
-		if self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "3D" :
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "3D" :
 
 			self.list_of_params = ['offset', 'GN0', 'A1', 'A2', 'txy1', 'txy2', 'alpha1', 'alpha2', 'AR1', 'AR2', 'B', 'T_tri' ]
 			self.list_of_inits = ['1', '1', '1', '1', '0.02', '0.02', '1', '1', '5', '5', '1', '0.005']
 			self.list_of_min = ['0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0']
 			self.list_of_max = ['10', '5', '1', '1', '100000', '100000', '20', '20', '20', '20', '1', '100']
 
-		if self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "2D" :
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "2D" :
 
 			self.list_of_params = ['offset', 'GN0', 'A1', 'A2', 'txy1', 'txy2', 'alpha1', 'alpha2', 'B', 'T_tri' ]
 			self.list_of_inits = ['1', '1', '1', '1', '0.02', '0.02', '1', '1', '1', '0.005']
@@ -925,8 +967,8 @@ class Diffusion_window :
 
 			for item in data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list:
 				str1, str2 = item.short_name.split(" vs ")
-				str3, str4 = str1.split(" ")
-				very_short_name = "ch" + str4 + str2
+				strs = str1.split(" ")
+				very_short_name = "ch" + strs[1] + str2
 				self.cross_flags.append(tk.IntVar(value=1))
 				self.flags_dict[item.short_name] = tk.Checkbutton(self.frame0003, text=very_short_name, variable=self.cross_flags[-1], command=self.Plot_curve)
 				self.flags_dict[item.short_name].grid(row = 0, column = column_counter, sticky='w')
@@ -1071,10 +1113,17 @@ class Diffusion_window :
 		self.Norm_label = tk.Label(self.frame001, text="FCS curve fitting: ")
 		self.Norm_label.grid(row = 0, column = 0, columnspan = 2, sticky = 'w')
 
+		self.Lines = ttk.Combobox(self.frame001,values = ["1 line", "2 lines", "2 lines single"], width = 9 )
+		self.Lines.config(state = "readonly")
+
+		self.Lines.grid(row = 1, column = 0, sticky='ew')
+
+		self.Lines.set('1 line')
+
 		self.Triplet = ttk.Combobox(self.frame001,values = ["triplet"], width = 9 )
 		self.Triplet.config(state = "readonly")
 		
-		self.Triplet.grid(row = 1, column = 0, sticky='ew')
+		self.Triplet.grid(row = 1, column = 1, sticky='ew')
 
 		self.Triplet.set("triplet")
 
@@ -1083,7 +1132,7 @@ class Diffusion_window :
 		self.Components = ttk.Combobox(self.frame001,values = ["1 component", "2 components"], width = 9)
 		self.Components.config(state = "readonly")
 		
-		self.Components.grid(row = 1, column = 1, sticky='ew')
+		self.Components.grid(row = 1, column = 2, sticky='ew')
 
 		self.Components.set("1 component")
 
@@ -1092,7 +1141,7 @@ class Diffusion_window :
 		self.Dimension = ttk.Combobox(self.frame001,values = ["2D", "3D"], width = 9)
 		self.Dimension.config(state = "readonly")
 		
-		self.Dimension.grid(row = 1, column = 2, sticky='ew')
+		self.Dimension.grid(row = 1, column = 3, sticky='ew')
 
 		self.Dimension.set("3D")
 

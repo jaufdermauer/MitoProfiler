@@ -135,6 +135,40 @@ def Corr_curve_2d_2(tc, offset, GN0, A1, A2, txy1, txy2, alpha1, alpha2, B1, tau
 
 	return offset + GN0 * G_Diff * G_T
 
+## 2fsFCCS correlation functions ##
+
+#2fsFCCS CC curve between lines with old parameters
+def CC_2FSFCCS_old(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1, d, w0):
+    txy1 = txy1
+    tauT1 = tauT1
+    G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))    #autocorrelation in 2D
+    G_d = np.exp(-d**2/(w0**2+w0**2*tc/txy1))
+    return offset + GN0 * G_Diff * G_d
+
+#new parameters:
+# C = N / (pi**(3/2)*w0**3*S) concentration
+# S: structural parameter
+# w0 waist radius
+# D: diffusion coefficient
+# tau: time shift
+# d: distance between 2 lines
+# tau_D = w0**2 / (4*D) diffusion time
+# tau_T: triplet time
+# T: triplet state population
+
+#sFCCS CC curve in 2 dimensions
+def CC_FCCS_2d(tau, offset, C, D, T, tau_T, w0, S):
+    G_auto = 1/(C*np.pi**(3/2)*w0**3*S)*(1+4*D*tau/w0**2)**(-1)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
+    G_T = 1 + T/(1-T) * np.exp(-tau/(tau_T))
+    return offset + G_auto * G_T
+
+#2fsFCCS CC curve between lines with new parameters
+def CC_2fsFCCS_2d(tau, offset, C, S, D, w0, d):
+	D = D * 1000000
+	G_auto = 1/(C*np.pi*S*w0**2)*(1+4*D*tau/w0**2)**(-1/2)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
+	G_CC = np.exp(-d**2/(4*D*tau+w0**2))
+	return offset + G_auto * G_CC
+
 
 def Gauss(x, a, x0, sigma):
 
