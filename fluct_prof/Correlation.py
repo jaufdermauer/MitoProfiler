@@ -22,7 +22,8 @@ def correlate_full (timestep, a, b):
     bins = logbins(a.size//2, 64)
     scorr = smooth(binaver(corr,bins))
     #scorr = binaver(corr,bins)
-
+    if scorr[0] < 0:
+        scorr = [i * -1 for i in scorr]
     time = bins*timestep
 
     return time, scorr

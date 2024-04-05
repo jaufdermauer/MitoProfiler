@@ -446,6 +446,7 @@ def CC_FCCS_2d(tau, offset, D, tau_T, T, w0, S, C):
 
 #2fsFCCS CC curve between lines with new parameters
 def CC_2fsFCCS_2d(tau, offset, C, S, D, w0, d):
+    D = D * 1000000
     G_auto = 1/(C*np.pi*S*w0**2)*(1+4*D*tau/w0**2)**(-1/2)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
     G_CC = np.exp(-d**2/(4*D*tau+w0**2))
     return offset + G_auto * G_CC

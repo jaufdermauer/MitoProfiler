@@ -146,11 +146,11 @@ def CC_2FSFCCS_old(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1, d, w0):
     return offset + GN0 * G_Diff * G_d
 
 #new parameters:
-# C = N / (pi**(3/2)*w0**3*S) concentration
+# C = N / (pi**(3/2)*w0**3*S) concentration (1/nm³)
 # S: structural parameter
-# w0 waist radius
-# D: diffusion coefficient
-# tau: time shift
+# w0 waist radius (nm)
+# D: diffusion coefficient (µm²/s)
+# tau: time shift (s)
 # d: distance between 2 lines
 # tau_D = w0**2 / (4*D) diffusion time
 # tau_T: triplet time
@@ -158,13 +158,15 @@ def CC_2FSFCCS_old(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1, d, w0):
 
 #sFCCS CC curve in 2 dimensions
 def CC_FCCS_2d(tau, offset, C, D, T, tau_T, w0, S):
-    G_auto = 1/(C*np.pi**(3/2)*w0**3*S)*(1+4*D*tau/w0**2)**(-1)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
-    G_T = 1 + T/(1-T) * np.exp(-tau/(tau_T))
-    return offset + G_auto * G_T
+	D = D * 1000000	#µm² to nm²
+	G_auto = 1/(C*np.pi**(3/2)*w0**3*S)*(1+4*D*tau/w0**2)**(-1)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
+	G_T = 1 + T/(1-T) * np.exp(-tau/(tau_T))
+	return offset + G_auto * G_T
 
 #2fsFCCS CC curve between lines with new parameters
 def CC_2fsFCCS_2d(tau, offset, C, S, D, w0, d):
-	D = D * 1000000
+	D = D * 1000000	#µm² to nm²
+	#C = C / 1000000000 #nm³ to µm³
 	G_auto = 1/(C*np.pi*S*w0**2)*(1+4*D*tau/w0**2)**(-1/2)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
 	G_CC = np.exp(-d**2/(4*D*tau+w0**2))
 	return offset + G_auto * G_CC
@@ -977,7 +979,7 @@ def Export_function():
 				channel = chan[name]
 
 				for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
-					
+					print(data_c.data_list_raw[file1].diff_fitting[rep1, channel]["GN0"])
 					GN0s[n][r] = data_c.data_list_raw[file1].diff_fitting[rep1, channel]["GN0"]
 			
 			#calculate CCs CH0 vs CH1

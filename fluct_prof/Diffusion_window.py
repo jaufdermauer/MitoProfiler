@@ -44,6 +44,8 @@ import random
 
 import seaborn as sns
 
+import xlsxwriter
+
 
 #--------------------------
 #End of importing general modules
@@ -74,15 +76,46 @@ class Diffusion_window :
 	def Save_plot_data(self):
 		filename = data_cont.initialdirectory + "\\Plots_diffusion.txt"
 
+		workbook = xlsxwriter.Workbook(data_cont.initialdirectory + '\\Plots_diffusion.xlsx')
+
 		open_file = open(filename, 'w')
 		print(self.save_plot_dict.keys())
+		lastkey = ''
+		worksheets = []
+		current_sheet = -1
 		for key in self.save_plot_dict.keys():
+			print(lastkey, key)
+			if lastkey + ' Fit' == key:
+				worksheets[current_sheet].write(1, 2, "Fit")
+				for i in range(len(self.save_plot_dict[key].x)):
+					worksheets[current_sheet].write(i+2, 2, str(round(self.save_plot_dict[key].y[i], 7)))
+				
+			elif lastkey + ' residuals' == key:
+				worksheets[current_sheet].write(1, 3, "Residuals")
+				for i in range(len(self.save_plot_dict[key].x)):
+					worksheets[current_sheet].write(i+2, 3, str(round(self.save_plot_dict[key].y[i], 7)))
+
+			else:
+				worksheet = workbook.add_worksheet(key)
+				worksheets.append(worksheet)
+				current_sheet += 1
+				worksheets[current_sheet].write(0, 0, str(key))
+				for i in range(len(self.save_plot_dict[key].x)):
+					worksheets[current_sheet].write(1, 0, "t (s)")
+					worksheets[current_sheet].write(1, 1, "G(t)")
+					worksheets[current_sheet].write(i+2, 1, str(round(self.save_plot_dict[key].y[i], 7)))
+					worksheets[current_sheet].write(i+2, 0, str(round(self.save_plot_dict[key].x[i], 7)))
+
 			open_file.write(str(key) + "\n")
 
 			for i in range(len(self.save_plot_dict[key].x)):
+
 				open_file.write(str(self.save_plot_dict[key].x[i]) + "\t" + str(self.save_plot_dict[key].y[i]) + "\n")
 
+			lastkey = key
+			col = 0
 		open_file.close()
+		workbook.close()
 
 	def Apply_to_all(self):
 	
@@ -402,7 +435,7 @@ class Diffusion_window :
 				self.D_value[ii].config(text = str(data_cont.data_list_raw[data_cont.file_index].diff_coeffs[data_cont.rep_index, self.channel_index][ii]))
 
 		if self.channel_index < data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_number:
-			if self.Lines.get() == '2 lines':
+			if self.Lines.get() == '2 lines' or self.Lines.get() == '2 lines single':
 				N = params["C"].value * (np.pi**(3/2)*params["w0"].value*3*params["S"].value)
 				data_cont.data_list_raw[data_cont.file_index].N[data_cont.rep_index, self.channel_index] = round(N,3)
 			else:
@@ -512,10 +545,15 @@ class Diffusion_window :
 					if self.Lines.get() == '2 lines':
 
 						self.curves.plot(x1, fun.CC_2fsFCCS_2d(x1, *popt), label = "Fit")
+						
+						diff = [a - b for a, b in zip(fun.CC_2fsFCCS_2d(x1, *popt),  y1)]
+						self.residuals.scatter(x1, diff)
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_2fsFCCS_2d(x1, *popt))
+						self.save_plot_dict [key+" residuals"] = fcs_importer.XY_plot(x1, fun.CC_2fsFCCS_2d(x1, *popt))
+
 
 					elif self.Lines.get() == '2 lines single':
 
@@ -589,7 +627,15 @@ class Diffusion_window :
 						
 						self.curves.plot(x1, fun.CC_2fsFCCS_2d(x1, *popt), label = "Fit")
 
-					if len(popt) == 7:
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_2fsFCCS_2d(x1, *popt))
+
+					elif self.Lines.get() == '2 lines single':
+						
+						self.curves.plot(x1, fun.CC_FCCS_2d(x1, *popt), label = "Fit")
+						
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_FCCS_2d(x1, *popt))
+
+					elif len(popt) == 7:
 						
 						self.curves.plot(x1, fun.Corr_curve_2d(x1, *popt), label = "Fit")
 
@@ -597,18 +643,18 @@ class Diffusion_window :
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_2d(x1, *popt))
 
-					if len(popt) == 8:
+					elif len(popt) == 8:
 						
 						self.curves.plot(x1, fun.Corr_curve_3d(x1, *popt), label = "Fit")
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name) + " Fit"
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_3d(x1, *popt))
-					if len(popt) == 10:
+					elif len(popt) == 10:
 						
 						self.curves.plot(x1, fun.Corr_curve_2d_2(x1, *popt), label = "Fit")
 
-					if len(popt) == 12:
+					elif len(popt) == 12:
 						
 						self.curves.plot(x1, fun.Corr_curve_3d_2(x1, *popt), label = "Fit")
 
@@ -619,10 +665,14 @@ class Diffusion_window :
 		
 		self.curves.set_title("Correlation curves")
 		self.curves.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
-		self.curves.set_ylabel('G(tau)')
-		self.curves.set_xlabel('Delay time')
+		self.curves.set_ylabel('G(τ)')
+		self.curves.set_xlabel('τ (s)')
 		self.curves.set_xscale ('log')
 
+		self.residuals.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
+		self.residuals.set_ylabel('Δ (τ)')
+		self.residuals.set_xlabel('τ (s)')
+		self.residuals.set_xscale ('log')
 		
 
 		self.curves.legend(loc='upper right')
@@ -784,14 +834,14 @@ class Diffusion_window :
 			self.list_of_params = ['offset', 'C', 'S', 'D', 'w0', 'd']
 			self.list_of_inits = ['0', '1', '1', '1', '200', '400']
 			self.list_of_min = ['0', '0', '0', '0', '0', '0', '0', '0']
-			self.list_of_max = ['10', '1000', '10', '100', '10000', '10000']
+			self.list_of_max = ['10', '1000000', '10', '100', '10000', '10000']
 
 		if self.Lines.get() == '2 lines single' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D" :
 
 			self.list_of_params = ['offset', 'C', 'D', 'T', 'tau_T', 'w0', 'S']
-			self.list_of_inits = ['0', '1', '1', '1', '0.005', '200', '400']
+			self.list_of_inits = ['0', '1', '1', '0.01', '0.005', '200', '400']
 			self.list_of_min = ['0', '0', '0', '0', '0', '0', '0']
-			self.list_of_max = ['10', '1000', '100', '100', '10', '10000', '10']
+			self.list_of_max = ['10', '1000', '100', '0.99', '10', '10000', '10']
 
 		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "3D" :
 
