@@ -74,9 +74,9 @@ from fluct_prof import fcs_importer
 class Diffusion_window :
 
 	def Save_plot_data(self):
-		filename = data_cont.initialdirectory + "\\Plots_diffusion.txt"
+		filename = data_cont.initialdirectory + "\\Plots_diffusion_" + data_cont.tree_list_name[data_cont.file_index] + ".txt"
 
-		workbook = xlsxwriter.Workbook(data_cont.initialdirectory + '\\Plots_diffusion.xlsx')
+		workbook = xlsxwriter.Workbook(data_cont.initialdirectory + "\\Plots_diffusion_" + data_cont.tree_list_name[data_cont.file_index] + ".xlsx")
 
 		open_file = open(filename, 'w')
 		print(self.save_plot_dict.keys())
@@ -528,6 +528,8 @@ class Diffusion_window :
 
 				x1 = data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].auto_corr_arr.x
 				y1 = data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].auto_corr_arr.y
+				x_fit = np.logspace(np.log10(np.min(x1)), np.log10(np.max(x1)), len(x1)*2, base=10.0)
+
 
 				if self.fit_all_flag == False:
 					self.curves.scatter(x1, y1, label = data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name)
@@ -544,59 +546,59 @@ class Diffusion_window :
 
 					if self.Lines.get() == '2 lines':
 
-						self.curves.plot(x1, fun.CC_2fsFCCS_2d(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.CC_2fsFCCS_2d(x_fit, *popt), label = "Fit")
 						
 						diff = [a - b for a, b in zip(fun.CC_2fsFCCS_2d(x1, *popt),  y1)]
 						self.residuals.scatter(x1, diff)
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
 
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_2fsFCCS_2d(x1, *popt))
-						self.save_plot_dict [key+" residuals"] = fcs_importer.XY_plot(x1, fun.CC_2fsFCCS_2d(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.CC_2fsFCCS_2d(x_fit, *popt))
+						self.save_plot_dict [key+" residuals"] = fcs_importer.XY_plot(x_fit, fun.CC_2fsFCCS_2d(x_fit, *popt))
 
 
 					elif self.Lines.get() == '2 lines single':
 
-						self.curves.plot(x1, fun.CC_FCCS_2d(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.CC_FCCS_2d(x_fit, *popt), label = "Fit")
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
 
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_FCCS_2d(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.CC_FCCS_2d(x_fit, *popt))
 
 
 					elif len(popt) == 7:
 						
-						self.curves.plot(x1, fun.Corr_curve_2d(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.Corr_curve_2d(x_fit, *popt), label = "Fit")
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
 
 						
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_2d(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_2d(x_fit, *popt))
 
 					elif len(popt) == 8:
 						
-						self.curves.plot(x1, fun.Corr_curve_3d(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.Corr_curve_3d(x_fit, *popt), label = "Fit")
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
 
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_3d(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_3d(x_fit, *popt))
 
 					elif len(popt) == 10:
 						
-						self.curves.plot(x1, fun.Corr_curve_2d_2(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.Corr_curve_2d_2(x_fit, *popt), label = "Fit")
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
 
 						
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_2d_2(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_2d_2(x_fit, *popt))
 
 					elif len(popt) == 12:
 						
-						self.curves.plot(x1, fun.Corr_curve_3d_2(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.Corr_curve_3d_2(x_fit, *popt), label = "Fit")
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].short_name) + " Fit"
 
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_3d_2(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_3d_2(x_fit, *popt))
 
 
 
@@ -610,7 +612,7 @@ class Diffusion_window :
 				if self.fit_all_flag == False:
 					self.curves.scatter(x1, y1, label = data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name)
 
-					self.save_plot_dict [data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name] = fcs_importer.XY_plot(x1, y1)
+					self.save_plot_dict [data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name] = fcs_importer.XY_plot(x_fit, y1)
 
 				k = i + len(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list)
 
@@ -625,38 +627,38 @@ class Diffusion_window :
 
 					if self.Lines.get() == '2 lines':
 						
-						self.curves.plot(x1, fun.CC_2fsFCCS_2d(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.CC_2fsFCCS_2d(x_fit, *popt), label = "Fit")
 
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_2fsFCCS_2d(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.CC_2fsFCCS_2d(x_fit, *popt))
 
 					elif self.Lines.get() == '2 lines single':
 						
-						self.curves.plot(x1, fun.CC_FCCS_2d(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.CC_FCCS_2d(x1, *popt), label = "Fit")
 						
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.CC_FCCS_2d(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.CC_FCCS_2d(x_fit, *popt))
 
 					elif len(popt) == 7:
 						
-						self.curves.plot(x1, fun.Corr_curve_2d(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.Corr_curve_2d(x_fit, *popt), label = "Fit")
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name) + " Fit"
 
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_2d(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_2d(x_fit, *popt))
 
 					elif len(popt) == 8:
 						
-						self.curves.plot(x1, fun.Corr_curve_3d(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.Corr_curve_3d(x_fit, *popt), label = "Fit")
 
 						key = str(data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].cross_list[i].short_name) + " Fit"
 
-						self.save_plot_dict [key] = fcs_importer.XY_plot(x1, fun.Corr_curve_3d(x1, *popt))
+						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_3d(x_fit, *popt))
 					elif len(popt) == 10:
 						
-						self.curves.plot(x1, fun.Corr_curve_2d_2(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.Corr_curve_2d_2(x_fit, *popt), label = "Fit")
 
 					elif len(popt) == 12:
 						
-						self.curves.plot(x1, fun.Corr_curve_3d_2(x1, *popt), label = "Fit")
+						self.curves.plot(x_fit, fun.Corr_curve_3d_2(x_fit, *popt), label = "Fit")
 
 
 

@@ -985,14 +985,14 @@ def Export_function():
 			#calculate CCs CH0 vs CH1
 			for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
 					
-				CC = round(GN0s[2,r]/(GN0s[2,r] + GN0s[1,r]),4)
+				CC = round(GN0s[2,r]/(GN0s[2,r] + GN0s[0,r]),4)
 				line = "repetition" + str(r+1) + ": " + str(CC)
 				open_file.write(line + "\n")
 
 			#calculate CCs CH0 vs CH1
 			for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
 					
-				CC = round(GN0s[3,r]/(GN0s[3,r] + GN0s[0,r]), 4)
+				CC = round(GN0s[3,r]/(GN0s[3,r] + GN0s[1,r]), 4)
 				line = "repetition" + str(r+1) + ": " + str(CC)
 				open_file.write(line + "\n")
 

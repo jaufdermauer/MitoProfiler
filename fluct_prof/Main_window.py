@@ -94,18 +94,11 @@ class Left_frame :
 
 		self.traces.cla()
 
-		self.corr.cla()
-
 		for i in range (datasets_pos.datasets_list[rep].channels_number): 
-
-			
 
 			if self.channels_flags[datasets_pos.datasets_list[rep].channels_list[i].short_name].get() == 1:
 
-				
-
 				self.traces.plot(datasets_pos.datasets_list[rep].channels_list[i].fluct_arr.x, datasets_pos.datasets_list[rep].channels_list[i].fluct_arr.y, label = datasets_pos.datasets_list[rep].channels_list[i].short_name)
-
 				self.corr.plot(datasets_pos.datasets_list[rep].channels_list[i].auto_corr_arr.x, datasets_pos.datasets_list[rep].channels_list[i].auto_corr_arr.y, label = datasets_pos.datasets_list[rep].channels_list[i].short_name)
 
 		for i in range (datasets_pos.datasets_list[rep].cross_number):
@@ -249,7 +242,7 @@ class Left_frame :
 
 				if filename.endswith('.fcs'):
 
-					i = 0;
+					i = 0
 
 					while i < len(self.lines):
 
@@ -308,7 +301,8 @@ class Left_frame :
 						Button_ok = tk.Button(self.win_check, text="OK", command=self.Continue_Import)
 						Button_ok.grid(row = CarrierRows + 3, column = 0, columnspan = CarrierColumns+1, sticky='ew')
 					
-					else:self.Continue_Import()
+					else:
+						self.Continue_Import()
 
 
 				if filename.endswith('.SIN'): 
@@ -418,6 +412,7 @@ class Left_frame :
 		for dataset in self.tree.get_children():
 			self.tree.delete(dataset)
 		self.traces.clear()
+		self.traces2.clear()
 		self.corr.clear()
 		self.canvas1.draw_idle()
 	
@@ -621,64 +616,111 @@ class sFCS_frame:
 	def first_degree_bleaching(self, x, a, b):
 		return a*x+b
 	
+	def polynomial_bleaching(self, x, a,b,c,d,e):
+		return a*x**4 + b*x**3 + c*x**2 + d*x + e
+	
 	def Transfer_extracted(self):
 		name = self.dataset_names [self.file_number]
-		if name in self.dictionary_of_extracted:
-
-			dataset = self.dictionary_of_extracted[name]
-
-			treetree = d_tree.Data_tree (data_cont.data_frame.tree, name, dataset.repetitions)
-			
+		if name+"1" in self.dictionary_of_extracted:
+			newname = name+"1"
+			dataset = self.dictionary_of_extracted[newname]
+			treetree = d_tree.Data_tree (data_cont.data_frame.tree, newname, dataset.repetitions)
 			data_cont.tree_list.append(treetree)
-
-			data_cont.tree_list_name.append(name)
-
+			data_cont.tree_list_name.append(newname)
 			data_cont.binning_list.append(1)
-
-
 			data_cont.data_list_raw.append(dataset)
-
-
 			#data_list_current.append(dataset1)
-
-
 			data_cont.total_channels_list.append(dataset.datasets_list[0].channels_number + dataset.datasets_list[0].cross_number)
 			data_cont.repetitions_list.append(dataset.repetitions)
-
 			data_cont.peaks_list.append([None] * dataset.repetitions)
-
+			data_cont.list_of_channel_pairs.append([None])
+		if name+"2" in self.dictionary_of_extracted:
+			newname = name+"2"
+			dataset = self.dictionary_of_extracted[newname]
+			treetree = d_tree.Data_tree (data_cont.data_frame.tree, newname, dataset.repetitions)
+			data_cont.tree_list.append(treetree)
+			data_cont.tree_list_name.append(newname)
+			data_cont.binning_list.append(1)
+			data_cont.data_list_raw.append(dataset)
+			#data_list_current.append(dataset1)
+			data_cont.total_channels_list.append(dataset.datasets_list[0].channels_number + dataset.datasets_list[0].cross_number)
+			data_cont.repetitions_list.append(dataset.repetitions)
+			data_cont.peaks_list.append([None] * dataset.repetitions)
+			data_cont.list_of_channel_pairs.append([None])
+		if name+"cross" in self.dictionary_of_extracted:
+			newname = name+"cross"
+			dataset = self.dictionary_of_extracted[newname]
+			treetree = d_tree.Data_tree (data_cont.data_frame.tree, newname, dataset.repetitions)
+			data_cont.tree_list.append(treetree)
+			data_cont.tree_list_name.append(newname)
+			data_cont.binning_list.append(1)
+			data_cont.data_list_raw.append(dataset)
+			#data_list_current.append(dataset1)
+			data_cont.total_channels_list.append(dataset.datasets_list[0].channels_number + dataset.datasets_list[0].cross_number)
+			data_cont.repetitions_list.append(dataset.repetitions)
+			data_cont.peaks_list.append([None] * dataset.repetitions)
 			data_cont.list_of_channel_pairs.append([None])
 
 
 	def Plot_this_file(self):
 
 		self.traces.cla()
-
+		self.traces2.cla()
 		self.corr.cla()
 
 
 		name = self.dataset_names [self.file_number]
-		if name in self.dictionary_of_extracted:
+		if name+"1" in self.dictionary_of_extracted:
+			newname=name+"1"
 			rep = int(self.Rep_Display__choice.get()) - 1
 			channel = self.Chan_Display__choice.get()
-
-			dataset = self.dictionary_of_extracted [name] 
-
-			if channel == 'all':
-
+			dataset = self.dictionary_of_extracted [newname] 
+			if channel == 'all' and (self.Line_Display__choice.get() == "line 1" or  self.Line_Display__choice.get() == "all"):
+				print("Dataset list length", len(dataset.datasets_list))
+				#print(dataset.datasets_list[rep].channels_list[0].fluct_arr.y)
+				names = [] #avoid doubles
+				for i in range (0, dataset.datasets_list[rep].channels_number): 
+					current_channels_list = dataset.datasets_list[rep].channels_list[i]
+					if names.count(current_channels_list.short_name) == 0:
+						print(current_channels_list.short_name)
+						names.append(current_channels_list.short_name)
+						#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
+						popt, pcov = curve_fit(self.polynomial_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
+						self.traces.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
+						self.traces.plot(current_channels_list.fluct_arr.x, self.polynomial_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
+						self.corr.plot(current_channels_list.auto_corr_arr.x, current_channels_list.auto_corr_arr.y, label = current_channels_list.short_name)
+				for i in range (0, dataset.datasets_list[rep].cross_number):
+						if names.count(dataset.datasets_list[rep].cross_list[i].short_name) == 0:
+							print(dataset.datasets_list[rep].cross_list[i].short_name)
+							self.corr.plot(dataset.datasets_list[rep].cross_list[i].cross_corr_arr.x, dataset.datasets_list[rep].cross_list[i].cross_corr_arr.y, label = dataset.datasets_list[rep].cross_list[i].short_name)
+		
+		if name+"2" in self.dictionary_of_extracted:
+			newname = name+"2"
+			rep = int(self.Rep_Display__choice.get()) - 1
+			channel = self.Chan_Display__choice.get()
+			dataset = self.dictionary_of_extracted [newname] 
+			if channel == 'all' and (self.Line_Display__choice.get() == "line 2" or  self.Line_Display__choice.get() == "all"):
 				print("Dataset list length", len(dataset.datasets_list))
 				#print(dataset.datasets_list[rep].channels_list[0].fluct_arr.y)
 				for i in range (0, dataset.datasets_list[rep].channels_number): 
 					current_channels_list = dataset.datasets_list[rep].channels_list[i]
 					#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
-					popt, pcov = curve_fit(self.first_degree_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
-					self.traces.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
-					self.traces.plot(current_channels_list.fluct_arr.x, self.first_degree_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
-
+					popt, pcov = curve_fit(self.polynomial_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
+					self.traces2.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
+					self.traces2.plot(current_channels_list.fluct_arr.x, self.polynomial_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
 					self.corr.plot(current_channels_list.auto_corr_arr.x, current_channels_list.auto_corr_arr.y, label = current_channels_list.short_name)
-
 				for i in range (0, dataset.datasets_list[rep].cross_number):
+					self.corr.plot(dataset.datasets_list[rep].cross_list[i].cross_corr_arr.x, dataset.datasets_list[rep].cross_list[i].cross_corr_arr.y, label = dataset.datasets_list[rep].cross_list[i].short_name)
 
+
+
+		if name+"cross" in self.dictionary_of_extracted:
+			newname = name+"cross"
+			rep = int(self.Rep_Display__choice.get()) - 1
+			channel = self.Chan_Display__choice.get()
+			dataset = self.dictionary_of_extracted [newname] 
+			if channel == 'all':
+				for i in range (0, dataset.datasets_list[rep].cross_number):
 					self.corr.plot(dataset.datasets_list[rep].cross_list[i].cross_corr_arr.x, dataset.datasets_list[rep].cross_list[i].cross_corr_arr.y, label = dataset.datasets_list[rep].cross_list[i].short_name)
 
 
@@ -725,8 +767,13 @@ class sFCS_frame:
 		elif self.Scantype__choice.get() == "2 focus":
 			n_lines = 2
 			sedec = Sidecut_2fsFCS(self.dataset_list[self.file_number])
-			channels_number = sedec.array.shape[0]
-			array_length = sedec.array.shape[1]
+			if len(sedec.array.shape) == 3: #1 color
+				channels_number = 1
+				array_length = sedec.array.shape[0]
+			if len(sedec.array.shape) == 4: #2 color
+				channels_number = 2
+				array_length = sedec.array.shape[1]
+			
 
 
 		print("shape ", sedec.array.shape)
@@ -785,7 +832,9 @@ class sFCS_frame:
 		
 
 		
-		dataset_list_arg = []
+		dataset_list_arg1 = []
+		dataset_list_arg2 = []
+		dataset_list_arg_cross = []
 		#autocorrelation
 		for rep_index_i in range (repetitions):
 
@@ -825,13 +874,13 @@ class sFCS_frame:
 						y = list_of_y[channel][l][start : end]
 
 					if(bleaching_correction):
-						popt, pcov = curve_fit(self.first_degree_bleaching, x, y)
+						popt, pcov = curve_fit(self.polynomial_bleaching, x, y)
 						print(popt)
 						y_bc = []	#bleaching corrected y
 						for i,ys in enumerate(y):
-							correction_factor = self.first_degree_bleaching(0, *popt)/self.first_degree_bleaching(x[i], *popt)
+							correction_factor = np.sqrt(self.polynomial_bleaching(x[i], *popt)/self.polynomial_bleaching(0, *popt))
 							#print(correction_factor)
-							y_bc.append(ys*correction_factor)
+							y_bc.append(ys/correction_factor+self.polynomial_bleaching(0, *popt)*(1-correction_factor))
 
 						Tr = fcs_importer.XY_plot(x,y_bc)
 					else:
@@ -1036,16 +1085,23 @@ class sFCS_frame:
 			#lines_cross_list_arg[0]: CC line 1
 			#lines_cross_list_arg[1]: CC line 2
 			#lines_cross_list_arg[2]: CC between lines
-			FCS_Dataset =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[-1]), lines_list_arg[0], lines_cross_list_arg[-1])
 
-			dataset_list_arg.append(FCS_Dataset)
+			FCS_Dataset1 =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[0]), lines_list_arg[0], lines_cross_list_arg[0])
+			dataset_list_arg1.append(FCS_Dataset1)
+			dataset1 = 	fcs_importer.Full_dataset_fcs(repetitions, dataset_list_arg1)
+			self.dictionary_of_extracted [name+"1"] = dataset1
+			
+			#different datasets for 2 lines
+			if self.Scantype__choice.get() == "2 focus":
+				FCS_Dataset2 =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[1]), lines_list_arg[1], lines_cross_list_arg[1])
+				FCS_Dataset_cross =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[2]), lines_list_arg[0], lines_cross_list_arg[2])
+				dataset_list_arg2.append(FCS_Dataset2)
+				dataset_list_arg_cross.append(FCS_Dataset_cross)
+				dataset2 = 	fcs_importer.Full_dataset_fcs(repetitions, dataset_list_arg2)
+				dataset_cross = 	fcs_importer.Full_dataset_fcs(repetitions, dataset_list_arg_cross)
+				self.dictionary_of_extracted [name+"2"] = dataset2
+				self.dictionary_of_extracted [name+"cross"] = dataset_cross
 
-
-
-		
-		dataset = 	fcs_importer.Full_dataset_fcs(repetitions, dataset_list_arg)
-
-		self.dictionary_of_extracted [name] = dataset
 
 		self.Plot_this_file()
 
@@ -1098,7 +1154,7 @@ class sFCS_frame:
 			bdf = binned_data.flatten()		#flatten to find max/min in list
 			val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
 			self.image.grid(False)	#deactivate grid
-			truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:2000].T.tolist()
+			truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:512000//len(binned_data)].T.tolist()
 			self.image.imshow(truncated_binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
 			self.canvas1.draw_idle()
 		
@@ -1114,10 +1170,14 @@ class sFCS_frame:
 			val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
 			self.image.grid(False)	#deactivate grid
 			self.image2.grid(False)	#deactivate grid
-			truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:2000].T.tolist()
-			truncated_binned_data2 = np.array(np.array(binned_data2).T.tolist())[0:2000].T.tolist()
+			truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:32*len(binned_data)].T.tolist()
+			truncated_binned_data2 = np.array(np.array(binned_data2).T.tolist())[0:32*len(binned_data)].T.tolist()
 			self.image.imshow(truncated_binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
 			self.image2.imshow(truncated_binned_data2,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
+
+			#self.image.set_xscale('log')
+			#self.image2.set_xscale('log')
+
 			self.canvas1.draw_idle()
 
 		self.figure1.tight_layout()
@@ -1287,13 +1347,16 @@ class sFCS_frame:
 		self.Chan_Display_label = tk.Label(self.frame023,  text = "Channel: ")
 		self.Chan_Display_label.grid(row = 7, column = 0, sticky = 'ew')
 
+		self.Line_Display_label = tk.Label(self.frame023,  text = "Line: ")
+		self.Line_Display_label.grid(row = 8, column = 0, sticky = 'ew')
+
 		self.Scantype_label = tk.Label(self.frame023,  text = "Scan type: ")
-		self.Scantype_label.grid(row = 8, column = 0, columnspan = 2, sticky = 'w')
+		self.Scantype_label.grid(row = 9, column = 0, columnspan = 2, sticky = 'w')
 
 		self.Scantype__choice = ttk.Combobox(self.frame023,values = ["1 focus","2 focus"],  width = 18 )
 		self.Scantype__choice.config(state = "readonly")
 		self.Scantype__choice.grid(row = 9, column = 1, sticky = 'ew')
-		self.Scantype__choice.set("2 focus")
+		self.Scantype__choice.set("1 focus")
 
 		self.channels_to_display = ['1']
 
@@ -1301,6 +1364,11 @@ class sFCS_frame:
 		self.Chan_Display__choice.config(state = "readonly")
 		self.Chan_Display__choice.grid(row = 7, column = 1, sticky = 'ew')
 		self.Chan_Display__choice.set("all")
+
+		self.Line_Display__choice = ttk.Combobox(self.frame023,values = ["line 1", "line 2", "all"],  width = 18 )
+		self.Line_Display__choice.config(state = "readonly")
+		self.Line_Display__choice.grid(row = 8, column = 1, sticky = 'ew')
+		self.Line_Display__choice.set("line 1")
 
 
 
@@ -1316,34 +1384,38 @@ class sFCS_frame:
 
 
 
-		gs = self.figure1.add_gridspec(4, 1)
+		gs = self.figure1.add_gridspec(8, 2)
 
 
-		self.image = self.figure1.add_subplot(gs[0,0])
+		self.image = self.figure1.add_subplot(gs[0,:2])
 
 		self.image.set_title("sFCS image line 1")
 
 		self.image.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		
-		self.image2 = self.figure1.add_subplot(gs[1,0])
+		self.image2 = self.figure1.add_subplot(gs[1,:2])
 
 		self.image2.set_title("sFCS image line 2")
 
 		self.image2.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		
 
-
-		self.traces = self.figure1.add_subplot(gs[2, 0])
-
-		self.traces.set_title("Traces")
-
+		#line 1
+		self.traces = self.figure1.add_subplot(gs[2:4, 0])
+		self.traces.set_title("Traces line 1")
 		self.traces.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		self.traces.set_ylabel('intensity (a.u.)')
 		self.traces.set_xlabel('Time (s)')
 		
+		#line 2
+		self.traces2 = self.figure1.add_subplot(gs[2:4, 1])
+		self.traces2.set_title("Traces line 2")
+		self.traces2.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
+		self.traces2.set_ylabel('intensity (a.u.)')
+		self.traces2.set_xlabel('Time (s)')
 
 
-		self.corr = self.figure1.add_subplot(gs[3, 0])
+		self.corr = self.figure1.add_subplot(gs[4:8, :2])
 
 		self.corr.set_title("Correlation curves")
 		self.corr.set_ylabel('Diff. Coeff.')
@@ -1499,20 +1571,15 @@ class Sidecut_2fsFCS:
 			image = tifffile.imread(self.lsm_file_name)
 			print(image.shape)
 			self.array =  tifffile.imread(self.lsm_file_name)
-
-	def isolate_channel(self,channel_no):
-		if len(self.array.shape) == 3:
-			return self.array
-		else:
-			return self.array[channel_no-1]
         
 	def isolate_maxima(self, channel_no, bins):
-		#print("self array shape", self.array.shape)
+		print("self array shape", self.array.shape)
 		if len(self.array.shape) == 4:	#dual color
 			array_to_analyze = self.array[channel_no]
+			self.maxima_2line = np.zeros((self.array.shape[2], self.array.shape[1]), dtype = float)
 		else:	#single color
 			array_to_analyze = np.array(self.array)
-		self.maxima_2line = np.zeros((self.array.shape[2], self.array.shape[1]), dtype = float)
+			self.maxima_2line = np.zeros((self.array.shape[1], self.array.shape[0]), dtype = float)
 		#print("array to analyze line1", array_to_analyze[0,0,0:100])
 		#print("array to analyze line2", array_to_analyze[0,1,0:100])
 		for line in range(2):
@@ -1538,38 +1605,3 @@ class Sidecut_2fsFCS:
 				#print(max_value)
 				self.maxima_2line[line,i] = max_value
 		return self.maxima_2line
-    
-	def maxs_single_autoc_plot(self, channel_no, rep_no, number_of_reps, timestep):
-		list_of_reps = np.array_split(self.isolate_maxima(channel_no), number_of_reps)
-		y = list_of_reps[rep_no-1]
-		time, scorr = corr_py.correlate_full (timestep, y, y)
-		plt.xscale("log")
-		plt.plot (time, scorr)
-		plt.tight_layout()
-		plt.show()
-        
-	def maxs_autoc_plots(self, channel_no, number_of_reps, timestep):
-		#plot correlation of each repetition,
-		list_of_reps = np.array_split(self.isolate_maxima(channel_no), number_of_reps)
-		for i in list_of_reps:
-			y = i
-			time, scorr = corr_py.correlate_full (timestep, y, y)
-			plt.xscale("log")
-			plt.plot (time, scorr)
-			plt.tight_layout()
-			plt.show()
-            
-		return time, scorr
-            
-	def maxs_autoc_carpet_plot(self, channel_no, timestep, number_of_reps, plot_title =''):
-		list_of_reps = np.array_split(self.isolate_maxima(channel_no), number_of_reps)
-		autocorrelation_by_rows = []
-		for i in range(len(list_of_reps)):
-			y = list_of_reps[i]
-			time, scorr = corr_py.correlate_full (timestep, y, y)
-			autocorrelation_by_rows.append(scorr)
-		fig, ax = plt.subplots(figsize=(100,10))
-		im = ax.imshow(autocorrelation_by_rows,origin="lower",cmap='bwr')
-		#cbar = ax.figure.colorbar(im, ax=ax,shrink=0.5,location='right', pad =0.003)
-		ax.set_title(plot_title)
-		plt.show()

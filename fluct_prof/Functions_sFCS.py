@@ -234,7 +234,7 @@ class File_2fsFCS:
     def isolate_channel(self,channel_no):
         print("isolate channel")
         print(self.array.shape)
-        if len(self.array.shape) == 2:
+        if len(self.array.shape) == 2 or (self.array.shape[0] > 2 and len(self.array.shape) == 3):
             return self.array
         else:
             return self.array[channel_no-1]
@@ -244,15 +244,21 @@ class File_2fsFCS:
         print(channel.shape)
         print("spatial bin")
         i = 0
-        binned_array = np.zeros((len(channel[:,0,0])), dtype = float)
+        len_array = channel.shape[0]
+        print(len_array)
+        #len_array = len(channel[:,0,0])
+        binned_array = np.zeros((len_array), dtype = float)
         #binned_array2 = np.zeros((len(channel[:,0,0])), dtype = float)
         print(binned_array.shape)
-        while i < len(channel[0,0])-bin_size+1:
+        while i < channel.shape[-1]-bin_size+1:
             j = 0
-            addition_array = np.zeros((len(channel[:,0,0])), dtype = float)
-            addition_array2 = np.zeros((len(channel[:,0,0])), dtype = float)
+            addition_array = np.zeros((len_array), dtype = float)
+            addition_array2 = np.zeros((len_array), dtype = float)
             while j < bin_size:
-                addition_array += channel[:,line_no, i]
+                if len(channel.shape) == 3: #2 colors
+                    addition_array += channel[:,line_no, i]
+                elif len(channel.shape) == 2: #1 color
+                    addition_array += channel[:,line_no, i]
                 #addition_array2 += channel[:,1, i]
                 j += 1
                 i += 1
@@ -440,7 +446,7 @@ def CC_2FSFCCS_old(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1, d, w0):
 
 #sFCCS CC curve in 2 dimensions
 def CC_FCCS_2d(tau, offset, D, tau_T, T, w0, S, C):
-    G_auto = 1/(C*np.pi**(3/2)*w0**3*S)*(1+4*D*tau/w0**2)**(-1)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
+    G_auto = 1/(C*np.pi**(3/2)*w0**3*S)*(1+4*D*tau/w0**2)**(-1/2)*(1+4*D*tau/(S**2*w0**2))**(-1/2)
     G_T = 1 + T/(1-T) * np.exp(-tau/(tau_T))
     return offset + G_auto * G_T
 
