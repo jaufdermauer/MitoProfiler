@@ -17,11 +17,9 @@ class File_sFCS:
         #read CZI
         if lsm_file_name.endswith("czi"):
             image = czifile.imread(self.lsm_file_name)
-            reshaped_image = np.empty((image.shape[2], image.shape[1], image.shape[5]), dtype = float)
-            for c in range(image.shape[2]):
-                for y in range(image.shape[5]):
-                    for t in range(image.shape[1]):
-                        reshaped_image[c,t,y] = image[0,t,c,0,0,y,0]
+            #image[0,t,c,0,0,y,0]
+            reshaped_image = image[0, :, :, 0, 0, :, 0]
+            reshaped_image = reshaped_image.transpose(1, 0, 2)
             self.array = reshaped_image
 
         #read TIF
@@ -39,7 +37,7 @@ class File_sFCS:
             print(self.array.shape)
 
     def isolate_channel(self,channel_no):
-        print(self.array.shape)
+        print("array shape: ", self.array.shape)
         if len(self.array.shape) == 2:
             return self.array
         else:
@@ -47,29 +45,31 @@ class File_sFCS:
     
     def spatial_bin(self,channel_no,bin_size):#resulting array has intensities by rows
         channel = self.isolate_channel(channel_no)
-        print(channel.shape)
-        i = 0
-        binned_array = np.zeros(len(channel[:,0]))
-        while i < len(channel[0])-bin_size+1:
-            j = 0
-            addition_array = np.zeros(len(channel[:,0]))
-            while j < bin_size:
-                addition_array += channel[:,i]
-                j += 1
-                i += 1
-            binned_array = np.row_stack((binned_array,addition_array))
-        binned_array = np.delete(binned_array,(0),axis=0)
-        print(binned_array.shape)
+        print("channel shape: ", channel.shape)
+        num_bins = channel.shape[1] // bin_size
+        reshaped_channel = channel[:, :num_bins * bin_size].reshape(channel.shape[0], num_bins, bin_size)
+        binned_array = np.transpose(reshaped_channel.sum(axis=2))
+
+        print("binned array shape: ", binned_array.shape)
         return binned_array
     
     def slice_in_time(self, channel_no, bin_size, n_slices):
         binned_array = self.spatial_bin(channel_no,bin_size)
-        sliced_array = np.zeros(int(len(binned_array[0])/n_slices))
-        for i in range(len(binned_array[:,0])):
-            arr = np.array_split(binned_array[i],n_slices)
-            arr = np.vstack(arr)
-            sliced_array = np.row_stack((sliced_array,arr))
-        sliced_array = np.delete(sliced_array,(0),axis=0)
+        print("now slice in time")
+        # Calculate the size of each slice
+        slice_size = binned_array.shape[1] // n_slices
+
+        # Reshape the binned_array for slicing
+        sliced_array = binned_array[:, :slice_size * n_slices].reshape(-1, slice_size)
+
+        # Handle any remaining elements that don't fit into slices
+        remaining_elements_count = binned_array.shape[1] % n_slices
+        if remaining_elements_count != 0:
+            remaining_elements = binned_array[:, slice_size * n_slices:]
+            remaining_elements_reshaped = np.vstack(np.array_split(remaining_elements, remaining_elements.shape[1], axis=1))
+            sliced_array = np.vstack((sliced_array, remaining_elements_reshaped))
+
+        print("sliced array shape: ", sliced_array.shape)
         return sliced_array
     
     def intensity_carpet_plot(self,channel_no, bin_size = 1, n_slices = 1):

@@ -22,8 +22,8 @@ def Create_root():
 	screen_width = root.winfo_screenwidth()
 	screen_height = root.winfo_screenheight()
 
-	win_width = round(0.5 * screen_width)
-	win_height = round (0.8 * screen_height)
+	win_width = round(screen_width)
+	win_height = round (screen_height)
 
 	#fontsize = round(win_width/85)
 

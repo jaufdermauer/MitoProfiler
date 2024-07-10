@@ -412,7 +412,6 @@ class Left_frame :
 		for dataset in self.tree.get_children():
 			self.tree.delete(dataset)
 		self.traces.clear()
-		self.traces2.clear()
 		self.corr.clear()
 		self.canvas1.draw_idle()
 	
@@ -665,7 +664,6 @@ class sFCS_frame:
 	def Plot_this_file(self):
 
 		self.traces.cla()
-		self.traces2.cla()
 		self.corr.cla()
 
 
@@ -676,22 +674,23 @@ class sFCS_frame:
 			channel = self.Chan_Display__choice.get()
 			dataset = self.dictionary_of_extracted [newname] 
 			if channel == 'all' and (self.Line_Display__choice.get() == "line 1" or  self.Line_Display__choice.get() == "all"):
-				print("Dataset list length", len(dataset.datasets_list))
+				#print("Dataset list length", len(dataset.datasets_list))
 				#print(dataset.datasets_list[rep].channels_list[0].fluct_arr.y)
 				names = [] #avoid doubles
 				for i in range (0, dataset.datasets_list[rep].channels_number): 
 					current_channels_list = dataset.datasets_list[rep].channels_list[i]
 					if names.count(current_channels_list.short_name) == 0:
-						print(current_channels_list.short_name)
+						#print(current_channels_list.short_name)
 						names.append(current_channels_list.short_name)
 						#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
 						popt, pcov = curve_fit(self.polynomial_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
 						self.traces.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
+						print("fluct array ", current_channels_list.short_name, current_channels_list.fluct_arr.y[0:100])
 						self.traces.plot(current_channels_list.fluct_arr.x, self.polynomial_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
 						self.corr.plot(current_channels_list.auto_corr_arr.x, current_channels_list.auto_corr_arr.y, label = current_channels_list.short_name)
 				for i in range (0, dataset.datasets_list[rep].cross_number):
 						if names.count(dataset.datasets_list[rep].cross_list[i].short_name) == 0:
-							print(dataset.datasets_list[rep].cross_list[i].short_name)
+							#print(dataset.datasets_list[rep].cross_list[i].short_name)
 							self.corr.plot(dataset.datasets_list[rep].cross_list[i].cross_corr_arr.x, dataset.datasets_list[rep].cross_list[i].cross_corr_arr.y, label = dataset.datasets_list[rep].cross_list[i].short_name)
 		
 		if name+"2" in self.dictionary_of_extracted:
@@ -700,14 +699,14 @@ class sFCS_frame:
 			channel = self.Chan_Display__choice.get()
 			dataset = self.dictionary_of_extracted [newname] 
 			if channel == 'all' and (self.Line_Display__choice.get() == "line 2" or  self.Line_Display__choice.get() == "all"):
-				print("Dataset list length", len(dataset.datasets_list))
+				#print("Dataset list length", len(dataset.datasets_list))
 				#print(dataset.datasets_list[rep].channels_list[0].fluct_arr.y)
 				for i in range (0, dataset.datasets_list[rep].channels_number): 
 					current_channels_list = dataset.datasets_list[rep].channels_list[i]
 					#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
 					popt, pcov = curve_fit(self.polynomial_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
-					self.traces2.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
-					self.traces2.plot(current_channels_list.fluct_arr.x, self.polynomial_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
+					#self.traces2.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
+					#self.traces2.plot(current_channels_list.fluct_arr.x, self.polynomial_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
 					self.corr.plot(current_channels_list.auto_corr_arr.x, current_channels_list.auto_corr_arr.y, label = current_channels_list.short_name)
 				for i in range (0, dataset.datasets_list[rep].cross_number):
 					self.corr.plot(dataset.datasets_list[rep].cross_list[i].cross_corr_arr.x, dataset.datasets_list[rep].cross_list[i].cross_corr_arr.y, label = dataset.datasets_list[rep].cross_list[i].short_name)
@@ -730,7 +729,7 @@ class sFCS_frame:
 		self.traces.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		self.traces.set_ylabel('Counts (Hz)')
 		self.traces.set_xlabel('Time (s)')
-		self.traces.legend(loc='upper right')
+		self.traces.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand", borderaxespad=0, ncol=4)
 
 
 
@@ -786,6 +785,8 @@ class sFCS_frame:
 			self.reps_to_display.append(i+1)
 
 		bins = int(self.Binning__choice.get())
+		lower_lim = self.borders_entry.get()
+		upper_lim = self.borders_entry_end.get()
 		timestep = float(self.Timestep_entry.get())
 
 		list_of_y = []
@@ -799,7 +800,7 @@ class sFCS_frame:
 
 			#try:
 
-			y = sedec.isolate_maxima(channel_no, bins)
+			y = sedec.isolate_maxima(channel_no, bins, lower_lim, upper_lim)
 			print("y", y)
 			#print("y shape", y.shape)
 
@@ -942,9 +943,18 @@ class sFCS_frame:
 
 						x = x1
 
-						
+						if(bleaching_correction):
+							popt, pcov = curve_fit(self.polynomial_bleaching, x, y)
+							print(popt)
+							y_bc = []	#bleaching corrected y
+							for i,ys in enumerate(y):
+								correction_factor = np.sqrt(self.polynomial_bleaching(x[i], *popt)/self.polynomial_bleaching(0, *popt))
+								#print(correction_factor)
+								y_bc.append(ys/correction_factor+self.polynomial_bleaching(0, *popt)*(1-correction_factor))
 
-						Tr1 = fcs_importer.XY_plot(x,y)
+							Tr1 = fcs_importer.XY_plot(x,y_bc)
+						else:
+							Tr1 = fcs_importer.XY_plot(x,y)
 
 						channel2 = channel1 + 1
 						while channel2 < channels_number:
@@ -980,6 +990,20 @@ class sFCS_frame:
 							x = x1
 
 							#print("cc line ", l, "ch2", y)
+
+							if(bleaching_correction):
+								popt, pcov = curve_fit(self.polynomial_bleaching, x, y)
+								print(popt)
+								y_bc = []	#bleaching corrected y
+								for i,ys in enumerate(y):
+									correction_factor = np.sqrt(self.polynomial_bleaching(x[i], *popt)/self.polynomial_bleaching(0, *popt))
+									#print(correction_factor)
+									y_bc.append(ys/correction_factor+self.polynomial_bleaching(0, *popt)*(1-correction_factor))
+
+								Tr2 = fcs_importer.XY_plot(x,y_bc)
+							else:
+								Tr2 = fcs_importer.XY_plot(x,y)
+
 
 							Tr2 = fcs_importer.XY_plot(x,y)
 
@@ -1150,12 +1174,16 @@ class sFCS_frame:
 			bins = 1
 			slices = 1
 
-			binned_data = eg.intensity_carpet_plot(1, bin_size=bins, n_slices = slices)
+			binned_data = eg.intensity_carpet_plot(0, bin_size=bins, n_slices = slices)
+			binned_data2 = eg.intensity_carpet_plot(1, bin_size=bins, n_slices = slices)
 			bdf = binned_data.flatten()		#flatten to find max/min in list
 			val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
 			self.image.grid(False)	#deactivate grid
-			truncated_binned_data = np.array(np.array(binned_data).T.tolist())[0:512000//len(binned_data)].T.tolist()
+			self.image2.grid(False)	#deactivate grid
+			truncated_binned_data = np.array(np.array(binned_data).T.tolist()).T.tolist()
+			truncated_binned_data2 = np.array(np.array(binned_data2).T.tolist()).T.tolist()
 			self.image.imshow(truncated_binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
+			self.image2.imshow(truncated_binned_data2,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
 			self.canvas1.draw_idle()
 		
 		elif self.Scantype__choice.get() == "2 focus":
@@ -1214,9 +1242,6 @@ class sFCS_frame:
 				self.dataset_list.append(filename)
 
 				self.dataset_names.append(self.name)
-		
-
-			
 
 				treetree = d_tree.Data_tree (self.tree, self.name, 0)
 				self.tree.selection_set(treetree.child_id)
@@ -1229,6 +1254,7 @@ class sFCS_frame:
 	def __init__ (self, frame0, win_width, win_height, dpi_all):
 
 		self.dictionary_of_extracted = {}
+
 
 		self.dataset_list = []
 		self.dataset_names = []
@@ -1301,130 +1327,144 @@ class sFCS_frame:
 		self.frame023 = tk.Frame(self.frame02)
 		self.frame023.pack(side="left", fill="x")
 
+		gridrow = 0
 
 		self.Extract_button = tk.Button(self.frame023, text="Extract trace", command=self.Extract_trace)
-		self.Extract_button.grid(row = 0, column = 0, columnspan = 2, sticky="EW")
-
+		self.Extract_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
+		gridrow += 1
 		
 		self.Bleaching_button = tk.Button(self.frame023, text="Correct bleaching", command=lambda: self.Extract_trace(True))
-		self.Bleaching_button.grid(row = 1, column = 0, columnspan = 2, sticky="EW")
+		self.Bleaching_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
+		gridrow += 1
 
 		self.Binning_label = tk.Label(self.frame023,  text = "Pixel binning: ")
-		self.Binning_label.grid(row = 2, column = 0, sticky = 'ew')
+		self.Binning_label.grid(row = gridrow, column = 0, sticky = 'ew')
 
-
-		self.Binning__choice = ttk.Combobox(self.frame023,values = ["1","2","3"],  width = 18 )
+		self.Binning__choice = ttk.Combobox(self.frame023,values = ["1","2","3","4","5","6"],  width = 10)
 		self.Binning__choice.config(state = "readonly")
-		self.Binning__choice.grid(row = 2, column = 1, sticky = 'ew')
+		self.Binning__choice.grid(row = gridrow, column = 1, sticky = 'ew')
 		self.Binning__choice.set("3")
+		gridrow += 1
+
+		
+		self.borders_label = tk.Label(self.frame023,  text = "Borders from: ", width = 9)
+		self.borders_label.grid(row = gridrow, column = 0, sticky = 'ew')
+
+		self.borders_entry = tk.Entry(self.frame023, width = 9)
+		self.borders_entry.grid(row = gridrow, column = 1, sticky='ew')
+		self.borders_entry.insert("end", str(3))
+		gridrow += 1
+
+		self.borders_label_end = tk.Label(self.frame023,  text = "to: ", width = 9)
+		self.borders_label_end.grid(row = gridrow, column = 0, sticky = 'ew')
+
+		self.borders_entry_end = tk.Entry(self.frame023, width = 9)
+		self.borders_entry_end.grid(row = gridrow, column = 1, sticky='ew')
+		self.borders_entry_end.insert("end", str(125))
+		gridrow += 1
+		
 
 		self.Repetitions_label = tk.Label(self.frame023,  text = "Repetitions: ")
-		self.Repetitions_label.grid(row = 3, column = 0, sticky = 'ew')
+		self.Repetitions_label.grid(row = gridrow, column = 0, sticky = 'ew')
 
 		self.Repetitions_entry = tk.Entry(self.frame023, width = 9)
-		self.Repetitions_entry.grid(row = 3, column = 1, sticky='ew')
+		self.Repetitions_entry.grid(row = gridrow, column = 1, sticky='ew')
 		self.Repetitions_entry.insert("end", str(1))
+		gridrow += 1
 
 		self.Timestep_label = tk.Label(self.frame023,  text = "Timestep: ")
-		self.Timestep_label.grid(row = 4, column = 0, sticky = 'ew')
+		self.Timestep_label.grid(row = gridrow, column = 0, sticky = 'ew')
 
 		self.Timestep_entry = tk.Entry(self.frame023, width = 9)
-		self.Timestep_entry.grid(row = 4, column = 1, sticky='ew')
-		self.Timestep_entry.insert("end", str(0.000293))
+		self.Timestep_entry.grid(row = gridrow, column = 1, sticky='ew')
+		self.Timestep_entry.insert("end", str(0.001))
+		gridrow += 1
 
 		self.Display_label = tk.Label(self.frame023,  text = "Display: ")
-		self.Display_label.grid(row = 5, column = 0, columnspan = 2, sticky = 'w')
+		self.Display_label.grid(row = gridrow, column = 0, columnspan = 2, sticky = 'w')
+		gridrow += 1
 
 		self.Rep_Display_label = tk.Label(self.frame023,  text = "Repetition: ")
-		self.Rep_Display_label.grid(row = 6, column = 0, sticky = 'ew')
+		self.Rep_Display_label.grid(row = gridrow, column = 0, sticky = 'ew')
 
 		self.Rep_Display__choice = ttk.Combobox(self.frame023,values = ["1","2","3"],  width = 18 )
 		self.Rep_Display__choice.config(state = "readonly")
-		self.Rep_Display__choice.grid(row = 6, column = 1, sticky = 'ew')
+		self.Rep_Display__choice.grid(row = gridrow, column = 1, sticky = 'ew')
 		self.Rep_Display__choice.set("1")
-
+		gridrow += 1
 
 		self.Chan_Display_label = tk.Label(self.frame023,  text = "Channel: ")
-		self.Chan_Display_label.grid(row = 7, column = 0, sticky = 'ew')
+		self.Chan_Display_label.grid(row = gridrow, column = 0, sticky = 'ew')
+
+		self.channels_to_display = ['1']
+		self.Chan_Display__choice = ttk.Combobox(self.frame023,values = self.channels_to_display,  width = 18 )
+		self.Chan_Display__choice.config(state = "readonly")
+		self.Chan_Display__choice.grid(row = gridrow, column = 1, sticky = 'ew')
+		self.Chan_Display__choice.set("all")
+		gridrow += 1
 
 		self.Line_Display_label = tk.Label(self.frame023,  text = "Line: ")
-		self.Line_Display_label.grid(row = 8, column = 0, sticky = 'ew')
+		self.Line_Display_label.grid(row = gridrow, column = 0, sticky = 'ew')
+		
+		self.Line_Display__choice = ttk.Combobox(self.frame023,values = ["line 1", "line 2", "all"],  width = 18 )
+		self.Line_Display__choice.config(state = "readonly")
+		self.Line_Display__choice.grid(row = gridrow, column = 1, sticky = 'ew')
+		self.Line_Display__choice.set("line 1")
+		gridrow += 1
 
 		self.Scantype_label = tk.Label(self.frame023,  text = "Scan type: ")
-		self.Scantype_label.grid(row = 9, column = 0, columnspan = 2, sticky = 'w')
+		self.Scantype_label.grid(row = gridrow, column = 0, columnspan = 2, sticky = 'w')
 
 		self.Scantype__choice = ttk.Combobox(self.frame023,values = ["1 focus","2 focus"],  width = 18 )
 		self.Scantype__choice.config(state = "readonly")
-		self.Scantype__choice.grid(row = 9, column = 1, sticky = 'ew')
+		self.Scantype__choice.grid(row = gridrow, column = 1, sticky = 'ew')
 		self.Scantype__choice.set("1 focus")
+		gridrow += 1
 
-		self.channels_to_display = ['1']
-
-		self.Chan_Display__choice = ttk.Combobox(self.frame023,values = self.channels_to_display,  width = 18 )
-		self.Chan_Display__choice.config(state = "readonly")
-		self.Chan_Display__choice.grid(row = 7, column = 1, sticky = 'ew')
-		self.Chan_Display__choice.set("all")
-
-		self.Line_Display__choice = ttk.Combobox(self.frame023,values = ["line 1", "line 2", "all"],  width = 18 )
-		self.Line_Display__choice.config(state = "readonly")
-		self.Line_Display__choice.grid(row = 8, column = 1, sticky = 'ew')
-		self.Line_Display__choice.set("line 1")
-
-
-
+		
 		self.Display_button = tk.Button(self.frame023, text="Display", command=self.Plot_this_file)
-		self.Display_button.grid(row = 10, column = 0, columnspan =2, sticky="EW")
+		self.Display_button.grid(row = gridrow, column = 0, columnspan =2, sticky="EW")
+		gridrow += 1
 
 		self.Transfer_button = tk.Button(self.frame023, text="Transfer curve", command=self.Transfer_extracted)
-		self.Transfer_button.grid(row = 11, column = 0, columnspan =2, sticky="EW")
+		self.Transfer_button.grid(row = gridrow, column = 0, columnspan =2, sticky="EW")
+		gridrow += 1
 
 
-		self.figure1 = Figure(figsize=(0.85*win_height/dpi_all,0.85*win_height/dpi_all), dpi = dpi_all)
+		self.figure1 = Figure(figsize=(0.9*win_width/dpi_all,0.85*win_height/dpi_all), dpi = dpi_all)
 
 
 
 
-		gs = self.figure1.add_gridspec(8, 2)
+		gs = self.figure1.add_gridspec(8, 1)
 
 
-		self.image = self.figure1.add_subplot(gs[0,:2])
+		self.image = self.figure1.add_subplot(gs[0])
 
-		self.image.set_title("sFCS image line 1")
+		self.image.set_title("sFCS image channel 1")
 
 		self.image.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		
-		self.image2 = self.figure1.add_subplot(gs[1,:2])
+		self.image2 = self.figure1.add_subplot(gs[1])
 
-		self.image2.set_title("sFCS image line 2")
+		self.image2.set_title("sFCS image channel 2")
 
 		self.image2.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		
 
 		#line 1
-		self.traces = self.figure1.add_subplot(gs[2:4, 0])
-		self.traces.set_title("Traces line 1")
+		self.traces = self.figure1.add_subplot(gs[2:4])
+		self.traces.set_title("Traces")
 		self.traces.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		self.traces.set_ylabel('intensity (a.u.)')
 		self.traces.set_xlabel('Time (s)')
-		
-		#line 2
-		self.traces2 = self.figure1.add_subplot(gs[2:4, 1])
-		self.traces2.set_title("Traces line 2")
-		self.traces2.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
-		self.traces2.set_ylabel('intensity (a.u.)')
-		self.traces2.set_xlabel('Time (s)')
 
-
-		self.corr = self.figure1.add_subplot(gs[4:8, :2])
+		self.corr = self.figure1.add_subplot(gs[4:8])
 
 		self.corr.set_title("Correlation curves")
 		self.corr.set_ylabel('Diff. Coeff.')
 		self.corr.set_ylabel('G (tau)')
 		self.corr.set_xlabel('Delay time')
-
-
-
-
 
 		self.canvas1 = FigureCanvasTkAgg(self.figure1, self.frame04)
 		self.canvas1.get_tk_widget().pack(side = "top", anchor = "nw", fill="x", expand=True)
@@ -1446,11 +1486,9 @@ class Sidecut_sFCS:
 			#read CZI
 		if lsm_file_name.endswith("czi"):
 			image = czifile.imread(self.lsm_file_name)
-			reshaped_image = np.empty((image.shape[2], image.shape[1], image.shape[5]), dtype = float)
-			for c in range(image.shape[2]):
-					for y in range(image.shape[5]):
-						for t in range(image.shape[1]):
-							reshaped_image[c,t,y] = image[0,t,c,0,0,y,0]
+			reshaped_image = image[0, :, :, 0, 0, :, 0]
+			# This will give you a new array with the shape (20, 10, 30)
+			reshaped_image = reshaped_image.transpose(1, 0, 2)
 			self.array = reshaped_image
 		
 		#read TIF
@@ -1473,32 +1511,38 @@ class Sidecut_sFCS:
 		else:
 			return self.array[channel_no-1]
         
-	def isolate_maxima(self, channel_no, bins):
+	def isolate_maxima(self, channel_no, bins, lower_lim, upper_lim):
 		self.maxima = []
+		self.max_indices = []
 
 		if len(self.array.shape) == 3:
 			array_to_analyze = self.array[channel_no]
-
 		else:
 			array_to_analyze = self.array
 
-		for i in array_to_analyze: 
-        
+		for i, i_array in enumerate(array_to_analyze): 
 			max_value = 0
 			max_index = 0
-			for j in range(0,len(i)):
-				if i[j] > max_value:
-					max_value = i[j]
+			for j in range(int(lower_lim), int(upper_lim)):
+				if i_array[j] > max_value:
 					max_index = j
+					max_value = i_array[j]
+			max_value = 0
 			try:
-				for j in range (0, bins-1):
-					max_value += i[max_index - j] + i[max_index + j]
-
+				for k in range (-bins, bins):
+					max_value += i_array[max_index + k]
+					if i == 0:
+						print(max_index+k, i_array[max_index + k])
 			except:
+				print("border pixel")
 				max_value = 0
 
 			self.maxima.append(max_value)
+			self.max_indices.append(max_index)
+
 		self.maxima = np.array(self.maxima)
+		#self.image.plot(np.arange(0,len(self.max_indices),1), self.max_indices)
+		print("maxima array ", channel_no, self.maxima)
 		return self.maxima
     
 	def maxs_single_autoc_plot(self, channel_no, rep_no, number_of_reps, timestep):
@@ -1600,7 +1644,7 @@ class Sidecut_2fsFCS:
 
 				except:
 					print("border pixel")
-					#max_value = 0
+					max_value = 0
 				
 				#print(max_value)
 				self.maxima_2line[line,i] = max_value
