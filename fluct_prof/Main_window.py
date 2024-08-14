@@ -48,6 +48,9 @@ import random
 
 import seaborn as sns
 
+import warnings
+# Suppress all warnings
+warnings.filterwarnings("ignore")
 
 #--------------------------
 #End of importing general modules
@@ -193,13 +196,6 @@ class Left_frame :
 
 
 	def Import(self):
-
-		
-
-
-		
-
-		
 
 		if data_cont.initialdirectory == '':
 			data_cont.initialdirectory = __file__
@@ -685,7 +681,7 @@ class sFCS_frame:
 						#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
 						popt, pcov = curve_fit(self.polynomial_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
 						self.traces.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
-						print("fluct array ", current_channels_list.short_name, current_channels_list.fluct_arr.y[0:100])
+						#print("fluct array ", current_channels_list.short_name, current_channels_list.fluct_arr.y[0:100])
 						self.traces.plot(current_channels_list.fluct_arr.x, self.polynomial_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
 						self.corr.plot(current_channels_list.auto_corr_arr.x, current_channels_list.auto_corr_arr.y, label = current_channels_list.short_name)
 				for i in range (0, dataset.datasets_list[rep].cross_number):
@@ -724,22 +720,23 @@ class sFCS_frame:
 
 
 
-		
-		self.traces.set_title("Intensity traces")
-		self.traces.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
-		self.traces.set_ylabel('Counts (Hz)')
-		self.traces.set_xlabel('Time (s)')
-		self.traces.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand", borderaxespad=0, ncol=4)
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore")
+			self.traces.set_title("Intensity traces")
+			self.traces.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
+			self.traces.set_ylabel('Counts (Hz)')
+			self.traces.set_xlabel('Time (s)')
+			self.traces.legend(bbox_to_anchor=(0, 1.02, 1, 0.2), loc="lower left", mode="expand", borderaxespad=0, ncol=4)
 
 
 
 
-		self.corr.set_title("Correlation curves")
-		self.corr.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
-		self.corr.set_ylabel('G(tau)')
-		self.corr.set_xlabel('Delay time')
-		self.corr.set_xscale ('log')
-		self.corr.legend(loc='upper right')
+			self.corr.set_title("Correlation curves")
+			self.corr.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
+			self.corr.set_ylabel('G(tau)')
+			self.corr.set_xlabel('Delay time')
+			self.corr.set_xscale ('log')
+			self.corr.legend(loc='upper right')
 
 		self.canvas1.draw_idle()
 
@@ -785,8 +782,8 @@ class sFCS_frame:
 			self.reps_to_display.append(i+1)
 
 		bins = int(self.Binning__choice.get())
-		lower_lim = self.borders_entry.get()
-		upper_lim = self.borders_entry_end.get()
+		lower_lim = int(self.borders_entry.get())
+		upper_lim = int(self.borders_entry_end.get())
 		timestep = float(self.Timestep_entry.get())
 
 		list_of_y = []
@@ -1180,10 +1177,8 @@ class sFCS_frame:
 			val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
 			self.image.grid(False)	#deactivate grid
 			self.image2.grid(False)	#deactivate grid
-			truncated_binned_data = np.array(np.array(binned_data).T.tolist()).T.tolist()
-			truncated_binned_data2 = np.array(np.array(binned_data2).T.tolist()).T.tolist()
-			self.image.imshow(truncated_binned_data,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
-			self.image2.imshow(truncated_binned_data2,origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
+			self.image.imshow(binned_data[:,0:10000],origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
+			self.image2.imshow(binned_data2[:,0:10000],origin="lower", cmap = "rainbow", vmin=min(bdf), vmax=(max(bdf)+val)/2)
 			self.canvas1.draw_idle()
 		
 		elif self.Scantype__choice.get() == "2 focus":
@@ -1340,7 +1335,7 @@ class sFCS_frame:
 		self.Binning_label = tk.Label(self.frame023,  text = "Pixel binning: ")
 		self.Binning_label.grid(row = gridrow, column = 0, sticky = 'ew')
 
-		self.Binning__choice = ttk.Combobox(self.frame023,values = ["1","2","3","4","5","6"],  width = 10)
+		self.Binning__choice = ttk.Combobox(self.frame023,values = ["0","1","2","3","4","5","6", "gaussian"],  width = 10)
 		self.Binning__choice.config(state = "readonly")
 		self.Binning__choice.grid(row = gridrow, column = 1, sticky = 'ew')
 		self.Binning__choice.set("3")
@@ -1510,36 +1505,62 @@ class Sidecut_sFCS:
 			return self.array
 		else:
 			return self.array[channel_no-1]
+		
+	@staticmethod
+	def gaussian(x,a,m,s):
+		return a*np.exp(-(x-m)**2/(2*s**2))
         
 	def isolate_maxima(self, channel_no, bins, lower_lim, upper_lim):
 		self.maxima = []
 		self.max_indices = []
+		self.bins = []
 
 		if len(self.array.shape) == 3:
 			array_to_analyze = self.array[channel_no]
 		else:
 			array_to_analyze = self.array
 
-		for i, i_array in enumerate(array_to_analyze): 
+		for i, i_array_full in enumerate(array_to_analyze):
+			if not i % 1000:
+				print(i)
+			i_array = i_array_full[lower_lim:upper_lim]
 			max_value = 0
 			max_index = 0
-			for j in range(int(lower_lim), int(upper_lim)):
-				if i_array[j] > max_value:
-					max_index = j
-					max_value = i_array[j]
-			max_value = 0
+			#calculate membrane pixels with gaussian
 			try:
-				for k in range (-bins, bins):
-					max_value += i_array[max_index + k]
-					if i == 0:
-						print(max_index+k, i_array[max_index + k])
-			except:
-				print("border pixel")
-				max_value = 0
+				initial_guess = [np.max(i_array), np.argmax(i_array), np.std(i_array)]
+				popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=10000)
+				max_index = int(popt[1])
+				bins = int(2.5*popt[2])
+			except (RuntimeError, ValueError):
+				#print(i, "fit failed initially, try different starting conditions")
+				initial_guess = [np.max(i_array), np.mean(self.max_indices), np.std(i_array)]
+				try:
+					popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=10000)
+					max_index = int(popt[1])
+					bins = int(2.5*popt[2])
+				except RuntimeError:
+					#print(i, "fit failed, using average values")
+					max_index = int(np.mean(self.max_indices))
+					bins = int(np.mean(self.bins))
 
+			if max_index - bins < 0 or max_index + bins > len(i_array):
+				max_index = int(np.mean(self.max_indices))
+			if max_index - bins < 0 or max_index + bins > len(i_array):
+				bins = int(np.mean(self.bins))
+			for k in range (-bins, bins):
+				max_value += i_array[max_index + k]
+				if i == 0:
+					print(max_index+k, i_array[max_index + k])
+			"""old code
+			max = 0
+			for i in range(-bins,bins):
+				if np.argmax(i_array) + i < len(i_array) and np.argmax(i_array) + i > 0:
+					max += i_array[np.argmax(i_array) + i]
+			"""
+			self.bins.append(bins)
 			self.maxima.append(max_value)
 			self.max_indices.append(max_index)
-
 		self.maxima = np.array(self.maxima)
 		#self.image.plot(np.arange(0,len(self.max_indices),1), self.max_indices)
 		print("maxima array ", channel_no, self.maxima)
