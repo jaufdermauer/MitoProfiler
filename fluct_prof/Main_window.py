@@ -673,7 +673,7 @@ class sFCS_frame:
 				#print("Dataset list length", len(dataset.datasets_list))
 				#print(dataset.datasets_list[rep].channels_list[0].fluct_arr.y)
 				names = [] #avoid doubles
-				for i in range (0, dataset.datasets_list[rep].channels_number): 
+				for i in range (dataset.datasets_list[rep].channels_number): 
 					current_channels_list = dataset.datasets_list[rep].channels_list[i]
 					if names.count(current_channels_list.short_name) == 0:
 						#print(current_channels_list.short_name)
@@ -784,6 +784,8 @@ class sFCS_frame:
 		bins = int(self.Binning__choice.get())
 		lower_lim = int(self.borders_entry.get())
 		upper_lim = int(self.borders_entry_end.get())
+		t_lower = int(self.time_entry.get())
+		t_upper = int(self.time_entry_end.get())
 		timestep = float(self.Timestep_entry.get())
 
 		list_of_y = []
@@ -797,7 +799,7 @@ class sFCS_frame:
 
 			#try:
 
-			y = sedec.isolate_maxima(channel_no, bins, lower_lim, upper_lim)
+			y = sedec.isolate_maxima(channel_no, bins, lower_lim, upper_lim, t_lower, t_upper)
 			print("y", y)
 			#print("y shape", y.shape)
 
@@ -864,6 +866,8 @@ class sFCS_frame:
 					x1 = [a - min1 for a in x]
 
 					x = x1
+
+					print("start/end ", start, end)
 
 					if self.Scantype__choice.get() == "1 focus":
 						y = list_of_y[channel][start : end]
@@ -1171,8 +1175,8 @@ class sFCS_frame:
 			bins = 1
 			slices = 1
 
-			binned_data = eg.intensity_carpet_plot(0, bin_size=bins, n_slices = slices)
-			binned_data2 = eg.intensity_carpet_plot(1, bin_size=bins, n_slices = slices)
+			binned_data = eg.intensity_carpet_plot(1, bin_size=bins, n_slices = slices)
+			binned_data2 = eg.intensity_carpet_plot(0, bin_size=bins, n_slices = slices)
 			bdf = binned_data.flatten()		#flatten to find max/min in list
 			val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
 			self.image.grid(False)	#deactivate grid
@@ -1357,6 +1361,22 @@ class sFCS_frame:
 		self.borders_entry_end.grid(row = gridrow, column = 1, sticky='ew')
 		self.borders_entry_end.insert("end", str(125))
 		gridrow += 1
+
+		self.time_label = tk.Label(self.frame023,  text = "Analyze from: ", width = 9)
+		self.time_label.grid(row = gridrow, column = 0, sticky = 'ew')
+
+		self.time_entry = tk.Entry(self.frame023, width = 9)
+		self.time_entry.grid(row = gridrow, column = 1, sticky='ew')
+		self.time_entry.insert("end", str(0))
+		gridrow += 1
+
+		self.time_label_end = tk.Label(self.frame023,  text = "to: ", width = 9)
+		self.time_label_end.grid(row = gridrow, column = 0, sticky = 'ew')
+
+		self.time_entry_end = tk.Entry(self.frame023, width = 9)
+		self.time_entry_end.grid(row = gridrow, column = 1, sticky='ew')
+		self.time_entry_end.insert("end", str(125))
+		gridrow += 1
 		
 
 		self.Repetitions_label = tk.Label(self.frame023,  text = "Repetitions: ")
@@ -1510,7 +1530,7 @@ class Sidecut_sFCS:
 	def gaussian(x,a,m,s):
 		return a*np.exp(-(x-m)**2/(2*s**2))
         
-	def isolate_maxima(self, channel_no, bins, lower_lim, upper_lim):
+	def isolate_maxima(self, channel_no, bins, lower_lim, upper_lim, t_lower, t_upper):
 		self.maxima = []
 		self.max_indices = []
 		self.bins = []
@@ -1519,36 +1539,40 @@ class Sidecut_sFCS:
 			array_to_analyze = self.array[channel_no]
 		else:
 			array_to_analyze = self.array
-
-		for i, i_array_full in enumerate(array_to_analyze):
+		print("tlow/up: ", t_lower, t_upper)
+		for i, i_array_full in enumerate(array_to_analyze[t_lower:t_upper]):
 			if not i % 1000:
 				print(i)
 			i_array = i_array_full[lower_lim:upper_lim]
 			max_value = 0
 			max_index = 0
 			#calculate membrane pixels with gaussian
+			i_array_max = np.max(i_array)
+			i_array_std = np.std(i_array)
 			try:
-				initial_guess = [np.max(i_array), np.argmax(i_array), np.std(i_array)]
-				popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=10000)
-				max_index = int(popt[1])
-				bins = int(2.5*popt[2])
+				initial_guess = [i_array_max, np.argmax(i_array), i_array_std]
+				#print("init ", initial_guess)
+				popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=400)
+				#print("popt ",popt)
+				max_index = int(popt[1]) #maximum = peak of gaussian
+				bins = int(2.5*popt[2]) #bin width = 2.5 sigma
 			except (RuntimeError, ValueError):
 				#print(i, "fit failed initially, try different starting conditions")
-				initial_guess = [np.max(i_array), np.mean(self.max_indices), np.std(i_array)]
+				n = i if i < 100 else 100
+				initial_guess = [i_array_max, np.mean(self.max_indices[i-n:i]), i_array_std]
 				try:
-					popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=10000)
+					popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=400)
 					max_index = int(popt[1])
 					bins = int(2.5*popt[2])
 				except RuntimeError:
 					#print(i, "fit failed, using average values")
 					max_index = int(np.mean(self.max_indices))
 					bins = int(np.mean(self.bins))
-
 			if max_index - bins < 0 or max_index + bins > len(i_array):
 				max_index = int(np.mean(self.max_indices))
 			if max_index - bins < 0 or max_index + bins > len(i_array):
 				bins = int(np.mean(self.bins))
-			for k in range (-bins, bins):
+			for k in range (-bins, bins+1):
 				max_value += i_array[max_index + k]
 				if i == 0:
 					print(max_index+k, i_array[max_index + k])
