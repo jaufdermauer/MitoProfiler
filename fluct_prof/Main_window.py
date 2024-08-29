@@ -1549,6 +1549,8 @@ class Sidecut_sFCS:
 			#calculate membrane pixels with gaussian
 			i_array_max = np.max(i_array)
 			i_array_std = np.std(i_array)
+			n = i if i < 100 else 100
+			max_indices_mean = np.mean(self.max_indices[i-n:i])
 			try:
 				initial_guess = [i_array_max, np.argmax(i_array), i_array_std]
 				#print("init ", initial_guess)
@@ -1558,21 +1560,36 @@ class Sidecut_sFCS:
 				bins = int(2.5*popt[2]) #bin width = 2.5 sigma
 			except (RuntimeError, ValueError):
 				#print(i, "fit failed initially, try different starting conditions")
-				n = i if i < 100 else 100
-				initial_guess = [i_array_max, np.mean(self.max_indices[i-n:i]), i_array_std]
+				initial_guess = [i_array_max, max_indices_mean, i_array_std]
 				try:
 					popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=400)
 					max_index = int(popt[1])
 					bins = int(2.5*popt[2])
 				except RuntimeError:
 					#print(i, "fit failed, using average values")
-					max_index = int(np.mean(self.max_indices))
-					bins = int(np.mean(self.bins))
-			if max_index - bins < 0 or max_index + bins > len(i_array):
-				max_index = int(np.mean(self.max_indices))
-			if max_index - bins < 0 or max_index + bins > len(i_array):
-				bins = int(np.mean(self.bins))
-			for k in range (-bins, bins+1):
+					if i == 0:
+						max_index = (upper_lim - lower_lim) / 2
+						bins = (upper_lim - lower_lim) / 2 - 1
+						print("round 0 ", max_index, bins)
+					else :
+						if max_index - bins < 0 or max_index + bins + 1 > len(i_array):
+							max_index = max_indices_mean
+						if max_index - bins < 0 or max_index + bins + 1 > len(i_array):
+							bins = np.mean(self.bins[i-n:i])
+			if i == 0:
+				if max_index - bins < 0 or max_index + bins + 1 > len(i_array):
+					max_index = (upper_lim - lower_lim) / 2
+				if max_index - bins < 0 or max_index + bins + 1 > len(i_array):
+					bins = (upper_lim - lower_lim) / 2 - 1
+					print("after ", max_index, bins)
+			else :
+				if max_index - bins < 0 or max_index + bins + 1 > len(i_array):
+					max_index = max_indices_mean
+				if max_index - bins < 0 or max_index + bins + 1 > len(i_array):
+					bins = np.mean(self.bins[i-n:i])
+			
+			max_index = int(max_index)
+			for k in range (-int(bins), int(bins)+1):
 				max_value += i_array[max_index + k]
 				if i == 0:
 					print(max_index+k, i_array[max_index + k])
