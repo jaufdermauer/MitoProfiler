@@ -607,7 +607,15 @@ class Left_frame :
 
 
 class sFCS_frame:
-	
+
+	def __init__ (self):
+		self.channels_to_display = []
+		self.list_of_y = []
+		print(f"list_of_y before append: {self.list_of_y} (Type: {type(self.list_of_y)})")
+		self.array_length = 0
+		self.channels_number = 0
+		self.n_lines = 0
+
 	def first_degree_bleaching(self, x, a, b):
 		return a*x+b
 	
@@ -748,54 +756,44 @@ class sFCS_frame:
 	def Empty_function(self):
 		print("Empty function invoked")
 
-	def Extract_trace(self, bleaching_correction = False):
+	def Extract_trace(self):
 
-		name = self.dataset_names [self.file_number]
 		if self.Scantype__choice.get() == "1 focus":
-			n_lines = 1
 			sedec = Sidecut_sFCS(self.dataset_list[self.file_number])
+			self.n_lines = 1
 			if len(sedec.array.shape) == 3:
-				channels_number = sedec.array.shape[0]
-				array_length = sedec.array.shape[1]
+				self.channels_number = sedec.array.shape[0]
+				self.array_length = sedec.array.shape[1]
 			else:
-				channels_number = 1
-				array_length = sedec.array.shape[0]
+				self.channels_number = 1
+				self.array_length = sedec.array.shape[0]
 		elif self.Scantype__choice.get() == "2 focus":
-			n_lines = 2
+			self.n_lines = 2
 			sedec = Sidecut_2fsFCS(self.dataset_list[self.file_number])
 			if len(sedec.array.shape) == 3: #1 color
-				channels_number = 1
-				array_length = sedec.array.shape[0]
+				self.channels_number = 1
+				self.array_length = sedec.array.shape[0]
 			if len(sedec.array.shape) == 4: #2 color
-				channels_number = 2
-				array_length = sedec.array.shape[1]
-			
-
+				self.channels_number = 2
+				self.array_length = sedec.array.shape[1]
 
 		print("shape ", sedec.array.shape)
 
-		print("channels number ", channels_number)
+		print("channels number ", self.channels_number)
 
-		repetitions = int(self.Repetitions_entry.get())
-		self.reps_to_display = []
-		for i in range (0, repetitions):
-			self.reps_to_display.append(i+1)
 
 		bins = int(self.Binning__choice.get())
 		lower_lim = int(self.borders_entry.get())
 		upper_lim = int(self.borders_entry_end.get())
 		t_lower = int(self.time_entry.get())
 		t_upper = int(self.time_entry_end.get())
-		timestep = float(self.Timestep_entry.get())
 
-		list_of_y = []
-
-		x_full = np.linspace(0, array_length*timestep, num=array_length)
 		#print(sedec.array.shape[0])
 
 		self.channels_to_display = []
+		self.list_of_y = []
 		counter_of_invalid_channels = 0
-		for channel_no in range(0, channels_number):
+		for channel_no in range(0, self.channels_number):
 
 			#try:
 
@@ -803,9 +801,10 @@ class sFCS_frame:
 			print("y", y)
 			#print("y shape", y.shape)
 
-			list_of_y.append(y)
 
 			self.channels_to_display.append(str(channel_no))
+			print(f"list_of_y before append: {self.list_of_y} (Type: {type(self.list_of_y)})")
+			self.list_of_y.append(y)
 
 			#except:
 
@@ -813,7 +812,7 @@ class sFCS_frame:
 				#counter_of_invalid_channels+=1
 
 
-			channels_number-=counter_of_invalid_channels
+			self.channels_number-=counter_of_invalid_channels
 
 			#self.traces.plot(x, y, label = "channel " + str(channel_no))
 
@@ -826,11 +825,19 @@ class sFCS_frame:
 
 		self.channels_to_display.append('all')
 		self.Chan_Display__choice.config(values = self.channels_to_display)
-		self.Rep_Display__choice.config(values = self.reps_to_display)
-
-		length_rep = int (array_length/repetitions)
 		
-
+	def correlate(self, bleaching_correction = True):
+		
+		name = self.dataset_names [self.file_number]
+		timestep = float(self.Timestep_entry.get())
+		repetitions = int(self.Repetitions_entry.get())
+		self.reps_to_display = []
+		for i in range (0, repetitions):
+			self.reps_to_display.append(i+1)
+				
+		x_full = np.linspace(0, self.array_length*timestep, num=self.array_length)
+		
+		length_rep = int (self.array_length/repetitions)
 		
 		dataset_list_arg1 = []
 		dataset_list_arg2 = []
@@ -840,11 +847,11 @@ class sFCS_frame:
 
 			lines_list_arg = []
 
-			for l in range(n_lines):
+			for l in range(self.n_lines):
 
 				channels_list_arg = []
 
-				for channel in range (channels_number):
+				for channel in range (self.channels_number):
 
 					end = length_rep*(rep_index_i + 1)
 					start = end - length_rep
@@ -870,10 +877,10 @@ class sFCS_frame:
 					print("start/end ", start, end)
 
 					if self.Scantype__choice.get() == "1 focus":
-						y = list_of_y[channel][start : end]
+						y = self.list_of_y[channel][start : end]
 
 					elif self.Scantype__choice.get() == "2 focus":
-						y = list_of_y[channel][l][start : end]
+						y = self.list_of_y[channel][l][start : end]
 
 					if(bleaching_correction):
 						popt, pcov = curve_fit(self.polynomial_bleaching, x, y)
@@ -907,14 +914,14 @@ class sFCS_frame:
 			lines_cross_list_arg = []
 
 			#cross correlation between channels
-			for l in range(n_lines):
+			for l in range(self.n_lines):
 
 				cross_list_arg = []
 
-				if channels_number > 1:
+				if self.channels_number > 1:
 					channel1 = 0
-					while channel1 < channels_number-1:
-					#for channel1 in range (0, channels_number):
+					while channel1 < self.channels_number-1:
+					#for channel1 in range (0, self.channels_number):
 						end = length_rep*(rep_index_i + 1)
 						start = end - length_rep
 
@@ -931,10 +938,10 @@ class sFCS_frame:
 						x = x_full[start : end]
 
 						if self.Scantype__choice.get() == "1 focus":
-							y = list_of_y[channel1][start : end]
+							y = self.list_of_y[channel1][start : end]
 
 						elif self.Scantype__choice.get() == "2 focus":
-							y = list_of_y[channel1][l][start : end]
+							y = self.list_of_y[channel1][l][start : end]
 
 						#print("cc line ", l, "ch1", y)
 
@@ -958,9 +965,9 @@ class sFCS_frame:
 							Tr1 = fcs_importer.XY_plot(x,y)
 
 						channel2 = channel1 + 1
-						while channel2 < channels_number:
+						while channel2 < self.channels_number:
 
-						#for channel2 in range (channel1 +1, channels_number):
+						#for channel2 in range (channel1 +1, self.channels_number):
 							end = length_rep*(rep_index_i + 1)
 							start = end - length_rep
 
@@ -977,10 +984,10 @@ class sFCS_frame:
 							x = x_full[start : end]
 
 							if self.Scantype__choice.get() == "1 focus":
-								y = list_of_y[channel2][start : end]
+								y = self.list_of_y[channel2][start : end]
 
 							elif self.Scantype__choice.get() == "2 focus":
-								y = list_of_y[channel2][l][start : end]
+								y = self.list_of_y[channel2][l][start : end]
 
 
 
@@ -1037,10 +1044,10 @@ class sFCS_frame:
 
 			if self.Scantype__choice.get() == "2 focus":
 				cross_list_arg = []
-				if channels_number > 1:
+				if self.channels_number > 1:
 					channel = 0
-					while channel < channels_number:
-					#for channel1 in range (0, channels_number):
+					while channel < self.channels_number:
+					#for channel1 in range (0, self.channels_number):
 						end = length_rep*(rep_index_i + 1)
 						start = end - length_rep
 
@@ -1055,7 +1062,7 @@ class sFCS_frame:
 						
 
 						x = x_full[start : end]
-						y = list_of_y[channel][0][start : end]
+						y = self.list_of_y[channel][0][start : end]
 
 						#print(y)
 
@@ -1067,7 +1074,7 @@ class sFCS_frame:
 
 						Tr1 = fcs_importer.XY_plot(x,y)
 
-						y = list_of_y[channel][1][start : end]
+						y = self.list_of_y[channel][1][start : end]
 
 						min1 = min(x)
 
@@ -1111,22 +1118,23 @@ class sFCS_frame:
 			#lines_cross_list_arg[1]: CC line 2
 			#lines_cross_list_arg[2]: CC between lines
 
-			FCS_Dataset1 =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[0]), lines_list_arg[0], lines_cross_list_arg[0])
+			FCS_Dataset1 =  fcs_importer.Dataset_fcs(self.channels_number, len(lines_cross_list_arg[0]), lines_list_arg[0], lines_cross_list_arg[0])
 			dataset_list_arg1.append(FCS_Dataset1)
 			dataset1 = 	fcs_importer.Full_dataset_fcs(repetitions, dataset_list_arg1)
 			self.dictionary_of_extracted [name+"1"] = dataset1
 			
 			#different datasets for 2 lines
 			if self.Scantype__choice.get() == "2 focus":
-				FCS_Dataset2 =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[1]), lines_list_arg[1], lines_cross_list_arg[1])
-				FCS_Dataset_cross =  fcs_importer.Dataset_fcs(channels_number, len(lines_cross_list_arg[2]), lines_list_arg[0], lines_cross_list_arg[2])
+				FCS_Dataset2 =  fcs_importer.Dataset_fcs(self.channels_number, len(lines_cross_list_arg[1]), lines_list_arg[1], lines_cross_list_arg[1])
+				FCS_Dataset_cross =  fcs_importer.Dataset_fcs(self.channels_number, len(lines_cross_list_arg[2]), lines_list_arg[0], lines_cross_list_arg[2])
 				dataset_list_arg2.append(FCS_Dataset2)
 				dataset_list_arg_cross.append(FCS_Dataset_cross)
 				dataset2 = 	fcs_importer.Full_dataset_fcs(repetitions, dataset_list_arg2)
 				dataset_cross = 	fcs_importer.Full_dataset_fcs(repetitions, dataset_list_arg_cross)
 				self.dictionary_of_extracted [name+"2"] = dataset2
 				self.dictionary_of_extracted [name+"cross"] = dataset_cross
-
+		
+		self.Rep_Display__choice.config(values = self.reps_to_display)
 
 		self.Plot_this_file()
 
@@ -1149,7 +1157,7 @@ class sFCS_frame:
 		#data_list_current.append(dataset1)
 
 
-		#data_cont.total_channels_list.append(dataset.datasets_list[0].channels_number + dataset.datasets_list[0].cross_number)
+		#data_cont.total_channels_list.append(dataset.datasets_list[0].self.channels_number + dataset.datasets_list[0].cross_number)
 		#data_cont.repetitions_list.append(dataset.repetitions)
 
 		#data_cont.peaks_list.append([None] * dataset.repetitions)
@@ -1332,10 +1340,14 @@ class sFCS_frame:
 		self.Extract_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
 		gridrow += 1
 		
-		self.Bleaching_button = tk.Button(self.frame023, text="Correct bleaching", command=lambda: self.Extract_trace(True))
+		self.Bleaching_button = tk.Button(self.frame023, text="Correlate bleaching", command=lambda: self.correlate(True))
 		self.Bleaching_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
 		gridrow += 1
-
+		"""
+		self.Correlate_button = tk.Button(self.frame023, text="Correlate no bleaching", command=lambda: self.correlate(False))
+		self.Correlate_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
+		gridrow += 1
+		"""
 		self.Binning_label = tk.Label(self.frame023,  text = "Pixel binning: ")
 		self.Binning_label.grid(row = gridrow, column = 0, sticky = 'ew')
 
