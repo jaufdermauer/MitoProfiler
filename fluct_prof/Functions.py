@@ -105,9 +105,9 @@ def Corr_curve_2d(tc, offset, GN0, A1, txy1, alpha1, B1, tauT1):
 
 	tauT1 = tauT1 / 1000
 
-	G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1))
+	G_Diff =  A1*(1+((tc/txy1)**alpha1))**-1
 
-	G_T = 1 + (B1*np.exp(tc/(-tauT1)))
+	G_T = 1 + B1*np.exp(tc/(-tauT1))
 
 	return offset + GN0 * G_Diff * G_T
 
@@ -131,9 +131,24 @@ def Corr_curve_2d_2(tc, offset, GN0, A1, A2, txy1, txy2, alpha1, alpha2, B1, tau
 
 	G_Diff =  A1*(((1+((tc/txy1)**alpha1))**-1)) + A2*(((1+((tc/txy2)**alpha2))**-1))
 
-	G_T = 1 + (B1*np.exp(tc/(-tauT1)))
+	G_T = 1 + B1*np.exp(tc/(-tauT1))
 
 	return offset + GN0 * G_Diff * G_T
+
+#2D free diffusion with gaussian detection volume for mitochondria
+def Corr_curve_2d_gaussian(tau, GN0, A, tau_D, S, B, t_tri):
+	tau_D = tau_D / 1000
+	t_tri = t_tri / 1000
+	G_Diff = A * (1+tau/tau_D)**(-1/2) * (1+tau/(S**2*tau_D))**(-1/2)
+	G_T = 1 + B*np.exp(tau/(-t_tri))
+	return GN0 * G_Diff * G_T
+
+def Corr_curve_1d(tau, GN0, A, tau_D, B, t_tri):
+	tau_D = tau_D / 1000
+	t_tri = t_tri / 1000
+	G_Diff = A * (1+tau/tau_D)**(-1/2)
+	G_T = 1 + B*np.exp(tau/(-t_tri))
+	return GN0 * G_Diff * G_T
 
 ## 2fsFCCS correlation functions ##
 
@@ -983,16 +998,33 @@ def Export_function():
 					GN0s[n][r] = data_c.data_list_raw[file1].diff_fitting[rep1, channel]["GN0"]
 			
 			#calculate CCs CH0 vs CH1
+			open_file.write("gr vs g" + "\n")
 			for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
 					
-				CC = round(GN0s[2,r]/(GN0s[2,r] + GN0s[0,r]),4)
+				CC = round(GN0s[2,r]/(GN0s[0,r]),4)
+				line = "repetition" + str(r+1) + ": " + str(CC)
+				open_file.write(line + "\n")
+
+			open_file.write("gr vs r" + "\n")
+			for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
+					
+				CC = round(GN0s[2,r]/(GN0s[1,r]),4)
 				line = "repetition" + str(r+1) + ": " + str(CC)
 				open_file.write(line + "\n")
 
 			#calculate CCs CH0 vs CH1
+			open_file.write("rg vs g" + "\n")
 			for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
 					
-				CC = round(GN0s[3,r]/(GN0s[3,r] + GN0s[1,r]), 4)
+				CC = round(GN0s[3,r]/(GN0s[0,r]), 4)
+				line = "repetition" + str(r+1) + ": " + str(CC)
+				open_file.write(line + "\n")
+
+			#calculate CCs CH0 vs CH1
+			open_file.write("rg vs r" + "\n")
+			for r,rep1 in enumerate(data_c.output_numbers_dict[file1]):
+					
+				CC = round(GN0s[3,r]/(GN0s[1,r]), 4)
 				line = "repetition" + str(r+1) + ": " + str(CC)
 				open_file.write(line + "\n")
 

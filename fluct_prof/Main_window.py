@@ -611,7 +611,6 @@ class sFCS_frame:
 	def __init__ (self):
 		self.channels_to_display = []
 		self.list_of_y = []
-		print(f"list_of_y before append: {self.list_of_y} (Type: {type(self.list_of_y)})")
 		self.array_length = 0
 		self.channels_number = 0
 		self.n_lines = 0
@@ -664,6 +663,10 @@ class sFCS_frame:
 			data_cont.peaks_list.append([None] * dataset.repetitions)
 			data_cont.list_of_channel_pairs.append([None])
 
+	def next_channel(self):
+		if int(self.Rep_Display__choice.get()) < len(self.reps_to_display):
+			self.Rep_Display__choice.set(str(int(self.Rep_Display__choice.get())+1))
+			self.Plot_this_file()
 
 	def Plot_this_file(self):
 
@@ -678,23 +681,17 @@ class sFCS_frame:
 			channel = self.Chan_Display__choice.get()
 			dataset = self.dictionary_of_extracted [newname] 
 			if channel == 'all' and (self.Line_Display__choice.get() == "line 1" or  self.Line_Display__choice.get() == "all"):
-				#print("Dataset list length", len(dataset.datasets_list))
-				#print(dataset.datasets_list[rep].channels_list[0].fluct_arr.y)
 				names = [] #avoid doubles
 				for i in range (dataset.datasets_list[rep].channels_number): 
 					current_channels_list = dataset.datasets_list[rep].channels_list[i]
 					if names.count(current_channels_list.short_name) == 0:
-						#print(current_channels_list.short_name)
 						names.append(current_channels_list.short_name)
-						#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
 						popt, pcov = curve_fit(self.polynomial_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
 						self.traces.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
-						#print("fluct array ", current_channels_list.short_name, current_channels_list.fluct_arr.y[0:100])
 						self.traces.plot(current_channels_list.fluct_arr.x, self.polynomial_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
 						self.corr.plot(current_channels_list.auto_corr_arr.x, current_channels_list.auto_corr_arr.y, label = current_channels_list.short_name)
 				for i in range (0, dataset.datasets_list[rep].cross_number):
 						if names.count(dataset.datasets_list[rep].cross_list[i].short_name) == 0:
-							#print(dataset.datasets_list[rep].cross_list[i].short_name)
 							self.corr.plot(dataset.datasets_list[rep].cross_list[i].cross_corr_arr.x, dataset.datasets_list[rep].cross_list[i].cross_corr_arr.y, label = dataset.datasets_list[rep].cross_list[i].short_name)
 		
 		if name+"2" in self.dictionary_of_extracted:
@@ -703,11 +700,9 @@ class sFCS_frame:
 			channel = self.Chan_Display__choice.get()
 			dataset = self.dictionary_of_extracted [newname] 
 			if channel == 'all' and (self.Line_Display__choice.get() == "line 2" or  self.Line_Display__choice.get() == "all"):
-				#print("Dataset list length", len(dataset.datasets_list))
-				#print(dataset.datasets_list[rep].channels_list[0].fluct_arr.y)
+
 				for i in range (0, dataset.datasets_list[rep].channels_number): 
 					current_channels_list = dataset.datasets_list[rep].channels_list[i]
-					#print(len(dataset.datasets_list[rep].channels_list[i].fluct_arr.x))
 					popt, pcov = curve_fit(self.polynomial_bleaching, current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y)
 					#self.traces2.plot(current_channels_list.fluct_arr.x, current_channels_list.fluct_arr.y, label = current_channels_list.short_name)
 					#self.traces2.plot(current_channels_list.fluct_arr.x, self.polynomial_bleaching(np.array(current_channels_list.fluct_arr.x, dtype = np.float64), *popt), label = current_channels_list.short_name + " bleaching / OOF")
@@ -798,12 +793,10 @@ class sFCS_frame:
 			#try:
 
 			y = sedec.isolate_maxima(channel_no, bins, lower_lim, upper_lim, t_lower, t_upper)
-			print("y", y)
 			#print("y shape", y.shape)
 
 
 			self.channels_to_display.append(str(channel_no))
-			print(f"list_of_y before append: {self.list_of_y} (Type: {type(self.list_of_y)})")
 			self.list_of_y.append(y)
 
 			#except:
@@ -864,8 +857,6 @@ class sFCS_frame:
 
 							end = len (x_full) - 1
 
-					
-					#print("list of y", len(list_of_y), len(list_of_y[0]))
 					x = x_full[start : end]
 					
 					min1 = min(x)
@@ -884,7 +875,7 @@ class sFCS_frame:
 
 					if(bleaching_correction):
 						popt, pcov = curve_fit(self.polynomial_bleaching, x, y)
-						print(popt)
+						print("bleaching parameters: ", popt)
 						y_bc = []	#bleaching corrected y
 						for i,ys in enumerate(y):
 							correction_factor = np.sqrt(self.polynomial_bleaching(x[i], *popt)/self.polynomial_bleaching(0, *popt))
@@ -1039,6 +1030,7 @@ class sFCS_frame:
 						channel1 += 1
 
 				lines_cross_list_arg.append(cross_list_arg)
+			self.Rep_Display__choice.set(str(1))
 
 			############# CROSS CORRELATION BETWEEN LINES FOR EACH CHANNEL AND EACH REPETITION ####################
 
@@ -1185,6 +1177,8 @@ class sFCS_frame:
 
 			binned_data = eg.intensity_carpet_plot(1, bin_size=bins, n_slices = slices)
 			binned_data2 = eg.intensity_carpet_plot(0, bin_size=bins, n_slices = slices)
+			
+			self.time_entry_end.insert("end", str(len(binned_data[0])))
 			bdf = binned_data.flatten()		#flatten to find max/min in list
 			val = filters.threshold_otsu(binned_data)	#otsu threshold to compensate for spikes in intensity
 			self.image.grid(False)	#deactivate grid
@@ -1218,11 +1212,7 @@ class sFCS_frame:
 		self.figure1.tight_layout()
 
 		self.Plot_this_file()
-        
-
-		#print(self.dataset_list[num])
-
-		
+        		
 
 
 
@@ -1340,9 +1330,6 @@ class sFCS_frame:
 		self.Extract_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
 		gridrow += 1
 		
-		self.Bleaching_button = tk.Button(self.frame023, text="Correlate bleaching", command=lambda: self.correlate(True))
-		self.Bleaching_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
-		gridrow += 1
 		"""
 		self.Correlate_button = tk.Button(self.frame023, text="Correlate no bleaching", command=lambda: self.correlate(False))
 		self.Correlate_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
@@ -1387,7 +1374,6 @@ class sFCS_frame:
 
 		self.time_entry_end = tk.Entry(self.frame023, width = 9)
 		self.time_entry_end.grid(row = gridrow, column = 1, sticky='ew')
-		self.time_entry_end.insert("end", str(125))
 		gridrow += 1
 		
 
@@ -1407,6 +1393,10 @@ class sFCS_frame:
 		self.Timestep_entry.insert("end", str(0.001))
 		gridrow += 1
 
+		self.Bleaching_button = tk.Button(self.frame023, text="Correlate bleaching", command=lambda: self.correlate(True))
+		self.Bleaching_button.grid(row = gridrow, column = 0, columnspan = 2, sticky="EW")
+		gridrow += 1
+
 		self.Display_label = tk.Label(self.frame023,  text = "Display: ")
 		self.Display_label.grid(row = gridrow, column = 0, columnspan = 2, sticky = 'w')
 		gridrow += 1
@@ -1418,6 +1408,12 @@ class sFCS_frame:
 		self.Rep_Display__choice.config(state = "readonly")
 		self.Rep_Display__choice.grid(row = gridrow, column = 1, sticky = 'ew')
 		self.Rep_Display__choice.set("1")
+		gridrow += 1
+
+		self.Next_Channel_button = tk.Button(self.frame023, text="display next channel", command=lambda: self.next_channel())
+		self.Next_Channel_button.grid(row = gridrow, column = 1, sticky="EW")
+		gridrow += 1
+
 		gridrow += 1
 
 		self.Chan_Display_label = tk.Label(self.frame023,  text = "Channel: ")
@@ -1478,8 +1474,6 @@ class sFCS_frame:
 
 		self.image2.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
 		
-
-		#line 1
 		self.traces = self.figure1.add_subplot(gs[2:4])
 		self.traces.set_title("Traces")
 		self.traces.ticklabel_format(axis = "y", style="sci", scilimits = (0,0))
@@ -1551,7 +1545,6 @@ class Sidecut_sFCS:
 			array_to_analyze = self.array[channel_no]
 		else:
 			array_to_analyze = self.array
-		print("tlow/up: ", t_lower, t_upper)
 		for i, i_array_full in enumerate(array_to_analyze[t_lower:t_upper]):
 			if not i % 1000:
 				print(i)
@@ -1577,7 +1570,7 @@ class Sidecut_sFCS:
 					popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=400)
 					max_index = int(popt[1])
 					bins = int(2.5*popt[2])
-				except RuntimeError:
+				except (RuntimeError, ValueError):
 					#print(i, "fit failed, using average values")
 					if i == 0:
 						max_index = (upper_lim - lower_lim) / 2
@@ -1593,7 +1586,6 @@ class Sidecut_sFCS:
 					max_index = (upper_lim - lower_lim) / 2
 				if max_index - bins < 0 or max_index + bins + 1 > len(i_array):
 					bins = (upper_lim - lower_lim) / 2 - 1
-					print("after ", max_index, bins)
 			else :
 				if max_index - bins < 0 or max_index + bins + 1 > len(i_array):
 					max_index = max_indices_mean
