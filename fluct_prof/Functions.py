@@ -136,19 +136,15 @@ def Corr_curve_2d_2(tc, offset, GN0, A1, A2, txy1, txy2, alpha1, alpha2, B1, tau
 	return offset + GN0 * G_Diff * G_T
 
 #2D free diffusion with gaussian detection volume for mitochondria
-def Corr_curve_2d_gaussian(tau, GN0, A, tau_D, S, B, t_tri):
+def Corr_curve_2d_gaussian(tau, GN0,tau_D, S):
 	tau_D = tau_D / 1000
-	t_tri = t_tri / 1000
-	G_Diff = A * (1+tau/tau_D)**(-1/2) * (1+tau/(S**2*tau_D))**(-1/2)
-	G_T = 1 + B*np.exp(tau/(-t_tri))
-	return GN0 * G_Diff * G_T
+	G_Diff = (1+tau/tau_D)**(-1/2) * (1+tau/(S**2*tau_D))**(-1/2)
+	return GN0 * G_Diff
 
-def Corr_curve_1d(tau, GN0, A, tau_D, B, t_tri):
+def Corr_curve_1d(tau, GN0,tau_D):
 	tau_D = tau_D / 1000
-	t_tri = t_tri / 1000
-	G_Diff = A * (1+tau/tau_D)**(-1/2)
-	G_T = 1 + B*np.exp(tau/(-t_tri))
-	return GN0 * G_Diff * G_T
+	G_Diff = (1+tau/tau_D)**(-1/2)
+	return GN0 * G_Diff
 
 ## 2fsFCCS correlation functions ##
 
@@ -938,6 +934,7 @@ def Export_function():
 				try:
 					line += str(data_c.data_list_raw[file1].N[rep1, channel]) + "\t"
 					line += str(data_c.data_list_raw[file1].cpm[rep1, channel]) + "\t"
+					line += str(data_c.data_list_raw[file1].chi2[rep1, channel]) + "\t"
 				except:
 					pass
 

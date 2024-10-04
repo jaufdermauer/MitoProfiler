@@ -1390,7 +1390,7 @@ class sFCS_frame:
 
 		self.Timestep_entry = tk.Entry(self.frame023, width = 9)
 		self.Timestep_entry.grid(row = gridrow, column = 1, sticky='ew')
-		self.Timestep_entry.insert("end", str(0.001))
+		self.Timestep_entry.insert("end", str(0.00059))
 		gridrow += 1
 
 		self.Bleaching_button = tk.Button(self.frame023, text="Correlate bleaching", command=lambda: self.correlate(True))
@@ -1559,7 +1559,7 @@ class Sidecut_sFCS:
 			try:
 				initial_guess = [i_array_max, np.argmax(i_array), i_array_std]
 				#print("init ", initial_guess)
-				popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=400)
+				popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=200)
 				#print("popt ",popt)
 				max_index = int(popt[1]) #maximum = peak of gaussian
 				bins = int(2.5*popt[2]) #bin width = 2.5 sigma
@@ -1567,7 +1567,7 @@ class Sidecut_sFCS:
 				#print(i, "fit failed initially, try different starting conditions")
 				initial_guess = [i_array_max, max_indices_mean, i_array_std]
 				try:
-					popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=400)
+					popt, _ = curve_fit(Sidecut_sFCS.gaussian, np.arange(0,len(i_array),1), i_array, p0=initial_guess, maxfev=200)
 					max_index = int(popt[1])
 					bins = int(2.5*popt[2])
 				except (RuntimeError, ValueError):

@@ -87,12 +87,12 @@ class Diffusion_window :
 			print(lastkey, key)
 			if lastkey + ' Fit' == key:
 				worksheets[current_sheet].write(1, 2, "Fit")
-				for i in range(len(self.save_plot_dict[key].x)):
+				for i in range(len(self.save_plot_dict[key].y)-1):
 					worksheets[current_sheet].write(i+2, 2, str(round(self.save_plot_dict[key].y[i], 7)))
 				
 			elif lastkey + ' residuals' == key:
 				worksheets[current_sheet].write(1, 3, "Residuals")
-				for i in range(len(self.save_plot_dict[key].x)):
+				for i in range(len(self.save_plot_dict[key].y)-1):
 					worksheets[current_sheet].write(i+2, 3, str(round(self.save_plot_dict[key].y[i], 7)))
 
 			else:
@@ -100,18 +100,19 @@ class Diffusion_window :
 				worksheets.append(worksheet)
 				current_sheet += 1
 				worksheets[current_sheet].write(0, 0, str(key))
-				for i in range(len(self.save_plot_dict[key].x)):
+				print(len(self.save_plot_dict[key].y), len(self.save_plot_dict[key].x))
+				for i in range(len(self.save_plot_dict[key].y)):
 					worksheets[current_sheet].write(1, 0, "t (s)")
 					worksheets[current_sheet].write(1, 1, "G(t)")
 					worksheets[current_sheet].write(i+2, 1, str(round(self.save_plot_dict[key].y[i], 7)))
 					worksheets[current_sheet].write(i+2, 0, str(round(self.save_plot_dict[key].x[i], 7)))
 
 			open_file.write(str(key) + "\n")
-
+			"""
 			for i in range(len(self.save_plot_dict[key].x)):
 
 				open_file.write(str(self.save_plot_dict[key].x[i]) + "\t" + str(self.save_plot_dict[key].y[i]) + "\n")
-
+			"""
 			lastkey = key
 			col = 0
 		open_file.close()
@@ -408,7 +409,7 @@ class Diffusion_window :
 			self.full_dict[param]["Init"].insert(0,str(round(params[param].value,3)))
 			popt.append(np.float64(params[param].value))
 			output_dict[param] = np.float64(params[param].value)
-
+		output_dict["chi2"] = o1.redchi
 
 
 
@@ -497,10 +498,10 @@ class Diffusion_window :
 		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '2 components' and self.Dimension.get() == "2D":
 			y_model = fun.Corr_curve_2d_2(x, *param_list)
 
-		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
 			y_model = fun.Corr_curve_2d_gaussian(x, *param_list)
 
-		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "1D" :
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '1 component' and self.Dimension.get() == "1D" :
 			y_model = fun.Corr_curve_1d(x, *param_list)
 			
 
@@ -535,7 +536,7 @@ class Diffusion_window :
 
 				x1 = data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].auto_corr_arr.x
 				y1 = data_cont.data_list_raw[data_cont.file_index].datasets_list[data_cont.rep_index].channels_list[i].auto_corr_arr.y
-				x_fit = np.logspace(np.log10(np.min(x1)), np.log10(np.max(x1)), len(x1)*2, base=10.0)
+				x_fit = x1#np.logspace(np.log10(np.min(x1)), np.log10(np.max(x1)), len(x1)+1, base=10.0)
 
 
 				if self.fit_all_flag == False:
@@ -549,7 +550,8 @@ class Diffusion_window :
 
 					for key in data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, i].keys():
 
-						popt.append(np.float64(data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, i][key]))
+						if key != "chi2":
+							popt.append(np.float64(data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, i][key]))
 
 					if self.Lines.get() == '2 lines':
 
@@ -573,7 +575,7 @@ class Diffusion_window :
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.CC_FCCS_2d(x_fit, *popt))
 
 
-					elif len(popt) == 7:
+					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D" :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_2d(x_fit, *popt), label = "Fit")
 
@@ -581,7 +583,7 @@ class Diffusion_window :
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_2d(x_fit, *popt))
 
-					elif len(popt) == 8:
+					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "3D" :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_3d(x_fit, *popt), label = "Fit")
 
@@ -589,7 +591,7 @@ class Diffusion_window :
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_3d(x_fit, *popt))
 
-					elif len(popt) == 10:
+					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '2 component' and self.Dimension.get() == "2D" :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_2d_2(x_fit, *popt), label = "Fit")
 
@@ -597,7 +599,7 @@ class Diffusion_window :
 						
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_2d_2(x_fit, *popt))
 
-					elif len(popt) == 12:
+					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '2 component' and self.Dimension.get() == "3D" :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_3d_2(x_fit, *popt), label = "Fit")
 
@@ -605,7 +607,7 @@ class Diffusion_window :
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_3d_2(x_fit, *popt))
 					
-					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
+					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_2d_gaussian(x_fit, *popt), label = "Fit")
 
@@ -613,7 +615,7 @@ class Diffusion_window :
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_2d_gaussian(x_fit, *popt))
 					
-					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
+					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '1 component' and self.Dimension.get() == "1D" :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_1d(x_fit, *popt), label = "Fit")
 
@@ -645,8 +647,9 @@ class Diffusion_window :
 
 
 					for key in data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, k].keys():
-
-						popt.append(np.float64(data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, k][key]))
+						
+						if key != "chi2":
+							popt.append(np.float64(data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, k][key]))
 
 					if self.Lines.get() == '2 lines':
 						
@@ -683,7 +686,7 @@ class Diffusion_window :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_3d_2(x_fit, *popt), label = "Fit")
 
-					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
+					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_2d_gaussian(x_fit, *popt), label = "Fit")
 
@@ -691,7 +694,7 @@ class Diffusion_window :
 
 						self.save_plot_dict [key] = fcs_importer.XY_plot(x_fit, fun.Corr_curve_2d_gaussian(x_fit, *popt))
 
-					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "1D" :
+					elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '1 component' and self.Dimension.get() == "1D" :
 						
 						self.curves.plot(x_fit, fun.Corr_curve_1d(x_fit, *popt), label = "Fit")
 
@@ -912,17 +915,17 @@ class Diffusion_window :
 			self.list_of_min = ['0', '0', '0', '0', '0',  '0', '0', '0', '0', '0']
 			self.list_of_max = ['10', '5', '1', '1', '100000', '100000', '20', '20', '1', '100']
 
-		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
-			self.list_of_params = ['GN0', 'A', 'tau_D', 'S', 'B', 't_tri']
-			self.list_of_inits = ['1', '1', '1', '1', '1','0.04']
-			self.list_of_min = ['0', '0', '0', '0', '0','0']
-			self.list_of_max = ['100', '1', '1000', '20', '1', '100']
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '1 component' and self.Dimension.get() == "2D elliptical" :
+			self.list_of_params = ['GN0','tau_D', 'S']
+			self.list_of_inits = ['1', '1', '1']
+			self.list_of_min = ['0', '0', '0']
+			self.list_of_max = ['100','1000','20']
 
-		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'triplet' and self.Components.get() == '1 component' and self.Dimension.get() == "1D" :
-			self.list_of_params = ['GN0', 'A', 'tau_D', 'B', 't_tri']
-			self.list_of_inits = ['1', '1', '1', '1','0.04']
-			self.list_of_min = ['0', '0', '0', '0', '0']
-			self.list_of_max = ['100', '1', '1000', '1', '100']
+		elif self.Lines.get() == '1 line' and self.Triplet.get() == 'singlet' and self.Components.get() == '1 component' and self.Dimension.get() == "1D" :
+			self.list_of_params = ['GN0','tau_D']
+			self.list_of_inits = ['1', '1']
+			self.list_of_min = ['0', '0']
+			self.list_of_max = ['100', '1000']
 
 
 		if 	data_cont.data_list_raw[data_cont.file_index].diff_fitting[data_cont.rep_index, self.channel_index] != None:
@@ -1220,12 +1223,12 @@ class Diffusion_window :
 
 		self.Lines.set('1 line')
 
-		self.Triplet = ttk.Combobox(self.frame001,values = ["triplet"], width = 9 )
+		self.Triplet = ttk.Combobox(self.frame001,values = ["singlet","triplet"], width = 9 )
 		self.Triplet.config(state = "readonly")
 		
 		self.Triplet.grid(row = 1, column = 1, sticky='ew')
 
-		self.Triplet.set("triplet")
+		self.Triplet.set("singlet")
 
 		self.Triplet.bind("<<ComboboxSelected>>", self.Update_fitting)
 
@@ -1243,7 +1246,7 @@ class Diffusion_window :
 		
 		self.Dimension.grid(row = 1, column = 3, sticky='ew')
 
-		self.Dimension.set("3D")
+		self.Dimension.set("1D")
 
 		self.Dimension.bind("<<ComboboxSelected>>", self.Update_fitting)
 
